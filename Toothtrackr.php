@@ -1,0 +1,344 @@
+
+<?php
+// Start session
+session_start();
+
+// Check if any user is logged in and redirect them
+if (isset($_SESSION["user"]) && isset($_SESSION["usertype"])) {
+    switch ($_SESSION["usertype"]) {
+        case 'a': // Admin
+            header("Location: admin/dashboard.php");
+            exit();
+        case 'd': // Dentist
+            header("Location: dentist/dashboard.php");
+            exit();
+        case 'p': // Patient
+            header("Location: patient/dashboard.php");
+            exit();
+    }
+}
+require_once 'connection.php';
+
+$clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_assoc();
+
+
+
+?>
+<!DOCTYPE html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ToothTrackr</title>
+    <link rel="icon" href="Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
+    <link rel="stylesheet" href="css/Toothtrackr.css">
+    <link rel="stylesheet" href="css/loading.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Architects+Daughter&family=Archivo+Black&family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Mulish:ital,wght@0,200..1000;1,200..1000&family=Oswald:wght@200..700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/assets/owl.carousel.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/assets/owl.theme.default.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/owl.carousel.min.js"></script>
+
+</head>
+
+<body>
+    <header>
+        <nav>
+            <ul class="sidebar">
+                <li onclick=hideSidebar()><a href="#"><img src="Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
+                <li><a href="#"><img src="Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
+                <li><a href="#">Home</a></li>
+                <!--<li><a href="#">About</a></li>-->
+                <li><a href="#services">Services</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li><a href="patient/signup.php">Sign up</a></li>
+                <li><a href="patient/login.php">Login</a></li>
+            </ul>
+            <ul>
+                <li><a href="#"><img src="Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
+                <li class="hideOnMobile"><a href="#">Home</a></li>
+                <!--<li class="hideOnMobile"><a href="#">About</a></li> -->
+                <li class="hideOnMobile"><a href="#services">Services</a></li>
+                <li class="hideOnMobile"><a href="#contact">Contact</a></li>
+                <li class="hideOnMobile"><a href="patient/signup.php" class="reg-btn">Sign up</a></li>
+                <li class="hideOnMobile"><a href="patient/login.php" class="log-btn">Login</a></li>
+                <li class="menu-button" onclick=showSidebar()><a href="#"><img src="Media/Icon/Black/navbar.png"
+                            class="navbar-logo" alt="Navigation Bar"></a></li>
+            </ul>
+        </nav>
+
+    </header>
+    <main>
+        <section id="home">
+            <div class="container-fluid h-100">
+                <div class="row no-gutters h-100 align-items-center">
+                    <!-- Left Content Column -->
+                    <div class="col-md-6">
+                        <div class="leftside">
+                            <div>
+                                <h1 class="tagline1">TRACK <span class="highlight1">FASTER</span></h1>
+                                <h1 class="tagline2">SMILE <span class="highlight">BRIGHTER</span></h1>
+                                <p class="description">ToothTrackr is a system designed for Songco Dental and Medical
+                                    Clinic, featuring an efficient scheduling system that allows staff and clients to
+                                    easily
+                                    manage appointments with just a few clicks!</p>
+                            </div>
+                            <div class="register-login">
+                                <button class="register"><a href="patient/signup.php">Sign up</a></button>
+                                <button class="login"><a href="patient/login.php">Login</a></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Image Column -->
+                    <div class="col-md-6 h-100">
+                        <div class="rightside h-100 d-flex align-items-center justify-content-end">
+                            <div class="device-container">
+                                <!-- Device frame -->
+                                <div class="device-frame">
+                                    <!-- Browser top bar -->
+                                    <div class="browser-bar">
+                                        <div class="browser-buttons">
+                                            <span class="browser-button red"></span>
+                                            <span class="browser-button yellow"></span>
+                                            <span class="browser-button green"></span>
+                                        </div>
+                                        <div class="browser-address">
+                                            <div class="url-bar">ToothTrackr.com</div>
+                                        </div>
+                                    </div>
+                                    <!-- Website content -->
+                                    <div class="website-content">
+                                        <div class="website-logo">
+                                            <img src="Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
+                                        </div>
+                                        <div class="website-ui">
+                                            <div class="ui-element header-bar"></div>
+                                            <div class="ui-element calendar-box"></div>
+                                            <div class="ui-element appointment-list">
+                                                <div class="appointment-item"></div>
+                                                <div class="appointment-item"></div>
+                                                <div class="appointment-item"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Notification elements -->
+                                <div class="notification notification-1">
+                                    <div class="notification-icon">✓</div>
+                                    <div class="notification-content">
+                                        <p class="notification-title">Appointment Confirmed</p>
+                                        <p class="notification-time">Today, 2:30 PM</p>
+                                    </div>
+                                </div>
+                                <div class="notification notification-2">
+                                    <div class="notification-icon">🔔</div>
+                                    <div class="notification-content">
+                                        <p class="notification-title">Reminder</p>
+                                        <p class="notification-time">Consultation Tomorrow</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <br><br><br><br><br><br><br>
+        </section>
+        <!--
+        <section id="about">
+            <span>
+                <p class="nextpage"></p>
+            </span>
+            <div>
+                <h2 class="title">ABOUT SDMC</h2>
+            </div>
+            <div>
+                
+            </div>
+        </section>
+-->
+
+        <?php
+        require_once 'connection.php';
+
+        function getServices($database)
+        {
+            $services = array();
+            $query = "SELECT * FROM services";
+            $result = $database->query($query);
+
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    $services[] = $row;
+                }
+            }
+
+            return $services;
+        }
+
+        $services = getServices($database);
+        ?>
+
+        <section id="services">
+            <div>
+                <br><br><br><br><br><br><br><br><br><br><br><br><br>
+                <h2 class="title">SERVICES OFFERED</h2>
+            </div>
+            <img src="Media/Icon/Blue/tooth.png" alt="" class="floating-tooth tooth-left" style="top: 30%;">
+            <img src="Media/Icon/Blue/tooth.png" alt="" class="floating-tooth tooth-right" style="top: 60%;">
+            <img src="Media/Icon/Blue/tooth.png" alt="" class="floating-tooth tooth-top">
+            <img src="Media/Icon/Blue/tooth.png" alt="" class="floating-tooth tooth-bottom">
+            <div class="carousel-container">
+                <button class="carousel-button prev" aria-label="Previous slide">&#10094;</button>
+                <div class="carousel">
+                    <?php foreach ($services as $service): ?>
+                        <div class="card">
+                            <div class="card-content">
+                                <img src="<?= htmlspecialchars($service['image_path']) ?>"
+                                    alt="<?= htmlspecialchars($service['procedure_name']) ?>">
+                                <h3><?= htmlspecialchars($service['procedure_name']) ?></h3>
+                                <p class="description"><?= htmlspecialchars($service['description']) ?></p>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <button class="carousel-button next" aria-label="Next slide">&#10095;</button>
+            </div>
+        </section>
+
+
+        <section id="contact">
+            <div>
+                <h2 class="title">CONTACT US</h2>
+            </div>
+            <div class="ffbox">
+                <div class="map-div">
+                    <iframe
+                        src="https://www.google.com/maps/embed?pb=!1m21!1m12!1m3!1d665.0489952204761!2d120.64800081003906!3d15.095937235044548!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m6!3e9!4m0!4m3!3m2!1d15.0960874!2d120.64812959999999!5e1!3m2!1sen!2sph!4v1732554199763!5m2!1sen!2sph"
+                        width="370" height="95%" allowfullscreen="" loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+                <div class="ffbox1">
+                    <h1 class="contact-title"><?= htmlspecialchars($clinic_info['clinic_name']) ?></h1>
+                    <p class="clinic-services"><?= htmlspecialchars($clinic_info['clinic_description']) ?></p>
+                    <div class="contact-info">
+                        <p><img src="Media/Icon/Blue/address.png" alt="Location" class="contact-icon"> <?= htmlspecialchars($clinic_info['address']) ?></p>
+                        <p><img src="Media/Icon/Blue/phone.png" alt="Phone" class="contact-icon"> <?= htmlspecialchars($clinic_info['phone']) ?></p>
+                        <p><img src="Media/Icon/Blue/mail.png" alt="Email" class="contact-icon"> <?= htmlspecialchars($clinic_info['email']) ?></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-row">
+                <div class="footer-column">
+                    <p class="copyright-text">Copyright &copy; 2025 All Rights Reserved</p>
+                </div>
+                <div class="footer-column">
+                    <ul class="social-icons">
+                        <li>
+                            <a class="facebook" href="<?= htmlspecialchars($clinic_info['facebook_url']) ?>" target="_blank" rel="noopener noreferrer">
+                                <i class="fab fa-facebook"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="instagram" href="<?= htmlspecialchars($clinic_info['instagram_url']) ?>" target="_blank" rel="noopener noreferrer">
+                                <i class="fab fa-instagram"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <a href="dentist/login.php" class="admin-btn">Login as Dentist</a>
+                    <a href="admin/login.php" class="admin-btn">Login as Admin</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <!--Navbar-->
+    <script>
+        function showSidebar() {
+            const sidebar = document.querySelector('.sidebar')
+            sidebar.style.display = 'flex'
+        }
+        function hideSidebar() {
+            const sidebar = document.querySelector('.sidebar')
+            sidebar.style.display = 'none'
+        }
+    </script>
+
+    <!--Services-->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const carousel = document.querySelector('.carousel');
+            const prevButton = document.querySelector('.carousel-button.prev');
+            const nextButton = document.querySelector('.carousel-button.next');
+            const cardWidth = document.querySelector('.card').offsetWidth + 20; // card width + gap
+
+            prevButton.addEventListener('click', function () {
+                carousel.scrollBy({ left: -cardWidth * 3, behavior: 'smooth' });
+            });
+
+            nextButton.addEventListener('click', function () {
+                carousel.scrollBy({ left: cardWidth * 3, behavior: 'smooth' });
+            });
+
+            // Hide buttons when at extremes
+            function updateButtonVisibility() {
+                prevButton.style.display = carousel.scrollLeft <= 10 ? 'none' : 'flex';
+                nextButton.style.display = carousel.scrollLeft >= carousel.scrollWidth - carousel.clientWidth - 10 ? 'none' : 'flex';
+            }
+
+            carousel.addEventListener('scroll', updateButtonVisibility);
+            updateButtonVisibility(); // Initial check
+
+            // Handle window resize
+            window.addEventListener('resize', function () {
+                cardWidth = document.querySelector('.card').offsetWidth + 20;
+                updateButtonVisibility();
+            });
+        });
+
+        let isDragging = false;
+        let startX, scrollLeft;
+
+        carousel.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.pageX - carousel.offsetLeft;
+            scrollLeft = carousel.scrollLeft;
+            carousel.style.cursor = 'grabbing';
+        });
+
+        carousel.addEventListener('mouseleave', () => {
+            isDragging = false;
+            carousel.style.cursor = 'grab';
+        });
+
+        carousel.addEventListener('mouseup', () => {
+            isDragging = false;
+            carousel.style.cursor = 'grab';
+        });
+
+        carousel.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const x = e.pageX - carousel.offsetLeft;
+            const walk = (x - startX) * 2; // Adjust scroll speed
+            carousel.scrollLeft = scrollLeft - walk;
+        });
+    </script>
+</body>
+
+</html>

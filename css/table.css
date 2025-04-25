@@ -1,0 +1,210 @@
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+.table th,
+.table td {
+    padding: 15px;
+    text-align: center;
+    border-bottom: 1px solid #f2f2f2;
+}
+
+.table th {
+    background-color: #dae8f6;
+    color: #333;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+.table tr{
+    transition: background-color 0.3s;
+}
+
+.table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.cell-text {
+    text-align: center; /* Left-align the text inside the div */
+    display: inline-block;
+    width: 80%;
+    font-size: 14px;
+}
+
+.table .profile-img-small {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #84b6e4;
+}
+
+.no-results {
+    text-align: center;
+    padding: 30px;
+    color: #777;
+    font-style: italic;
+}
+
+.title {
+    margin-bottom: 20px;
+    color: #333;
+    font-weight: 700;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.pagination a {
+    color: #444;
+    float: left;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 5px;
+    margin: 0 4px;
+    transition: background-color 0.3s;
+}
+
+.pagination a.active {
+    background-color: #84b6e4;
+    color: white;
+}
+
+.pagination a:hover:not(.active) {
+    background-color: #f1f1f1;
+}
+
+/* Update page layout for main container */
+.main-container {
+    display: flex;
+    height: 100vh;
+}
+
+.table-container {
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+@media screen and (max-width: 1024px) {
+    .content-area {
+        margin-left: 80px;
+        width: calc(100% - 80px);
+    }
+
+    .right-sidebar {
+        display: none;
+    }
+
+    .main-section {
+        width: 100%;
+        margin-right: 0;
+    }
+}
+
+/* buttons for table */
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.action-btn {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    background-color: #84b6e4;
+    border: none;
+    border-radius: 15px;
+    padding: 5px 15px 5px 35px; 
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    gap: 5px;
+    position: relative;
+    transition: background-color 0.3s;
+    margin: 2px;
+}
+.action-btn:hover {
+    background-color: #98c0e4;
+}
+
+.add-btn::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    width: 14px;
+    height: 14px;
+    background-image: url('../Media/Icon/White/add.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.edit-btn::before{
+    content: "";
+    position: absolute;
+    left: 15px;
+    width: 14px;
+    height: 14px;
+    background-image: url('../Media/Icon/White/edit.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.view-btn::before{
+    content: "";
+    position: absolute;
+    left: 15px;
+    width: 14px;
+    height: 14px;
+    background-image: url('../Media/Icon/White/view.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.remove-btn {
+    background-color: #e87c7c;
+}
+
+.remove-btn:hover {
+    background-color: #f28f8f;
+}
+
+.remove-btn::before{
+    content: "";
+    position: absolute;
+    left: 15px;
+    width: 14px;
+    height: 14px;
+    background-image: url('../Media/Icon/White/x.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+.done-btn {
+    background-color: #7fd393;
+}
+
+.done-btn:hover {
+    background-color: #95daa5;
+}
+
+.done-btn::before{
+    content: "";
+    position: absolute;
+    left: 15px;
+    width: 14px;
+    height: 14px;
+    background-image: url('../Media/Icon/White/check.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+}
