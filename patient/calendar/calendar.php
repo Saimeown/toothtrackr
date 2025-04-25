@@ -6,21 +6,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="../../Media/white-icon/white-ToothTrackr_Logo.png" type="image/png">
-    <!-- *Note: You must have internet connection on your laptop or pc other wise below code is not working -->
-    <!-- CSS for full calender -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.css" rel="stylesheet" />
-    <!-- JS for jQuery -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <!-- JS for full calender -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.9.0/fullcalendar.min.js"></script>
-    <!-- bootstrap css and js -->
-    <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
--->
     <link rel="stylesheet" href="../../css/bootstrap.min.css">
-
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
-
     <link rel="stylesheet" href="../../css/calendar.css">
     <link rel="stylesheet" href="../../css/admin.css">
     <link rel="stylesheet" href="../../css/animations.css">
@@ -33,8 +24,6 @@
 <body>
     <?php
     date_default_timezone_set('Asia/Singapore');
-    //learn from w3schools.com
-    
     session_start();
 
     if (isset($_SESSION["user"])) {
@@ -43,51 +32,34 @@
         } else {
             $useremail = $_SESSION["user"];
         }
-
     } else {
         header("location: ../login.php");
     }
 
-
-    //import database
     include("../../connection.php");
     $userrow = $database->query("select * from patient where pemail='$useremail'");
     $userfetch = $userrow->fetch_assoc();
     $userid = $userfetch["pid"];
     $username = $userfetch["pname"];
 
-
-    //echo $userid;
-    //echo $username;
-    
     $procedures = $database->query("SELECT * FROM procedures");
     $procedure_options = '';
     while ($procedure = $procedures->fetch_assoc()) {
         $procedure_options .= '<option value="' . $procedure['procedure_id'] . '">' . $procedure['procedure_name'] . '</option>';
     }
 
-    // Get totals for right sidebar
     $doctorrow = $database->query("select * from doctor where status='active';");
     $appointmentrow = $database->query("select * from appointment where status='booking' AND pid='$userid';");
     $schedulerow = $database->query("select * from appointment where status='appointment' AND pid='$userid';");
 
-    // Pagination
     $results_per_page = 10;
-
-    // Determine which page we're on
     if (isset($_GET['page'])) {
         $page = $_GET['page'];
     } else {
         $page = 1;
     }
-
-    // Calculate the starting limit for SQL
     $start_from = ($page - 1) * $results_per_page;
-
-    // Search functionality
     $search = "";
-
-    // This is the key part that needs fixing - check if 'sort' parameter exists and equals 'oldest'
     $sort_param = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
     $sort_order = ($sort_param === 'oldest') ? 'DESC' : 'ASC';
 
@@ -105,7 +77,6 @@
     $count_row = $count_result->fetch_assoc();
     $total_pages = ceil($count_row['total'] / $results_per_page);
 
-    // Calendar variables
     $today = date('Y-m-d');
     $currentMonth = date('F');
     $currentYear = date('Y');
@@ -113,13 +84,11 @@
     $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
     $currentDay = date('j');
 
-    // Fetch doctors
     $doctors = $database->query("SELECT docid, docname FROM doctor");
     $doctor_options = '';
     while ($doctor = $doctors->fetch_assoc()) {
         $doctor_options .= '<option value="' . $doctor['docid'] . '">' . $doctor['docname'] . '</option>';
     }
-
     ?>
     <div class="nav-container">
         <div class="sidebar">
@@ -130,8 +99,7 @@
             <div class="user-profile">
                 <div class="profile-image">
                     <?php
-                    $profile_pic = isset($userfetch['profile_pic']) ? $userfetch['profile_pic'] : '../Media/Icon/Blue/profile.png'
-                    ;
+                    $profile_pic = isset($userfetch['profile_pic']) ? $userfetch['profile_pic'] : '../Media/Icon/Blue/profile.png';
                     ?>
                     <img src="../../<?php echo $profile_pic; ?>" alt="Profile" class="profile-img">
                 </div>
@@ -185,7 +153,6 @@
                     <div class="container">
                         <div class="row">
                             <div class="col-lg-12">
-
                                 <div class="form-group">
                                     <label for="choose_dentist">Book an Appointment:</label>
                                     <div class="select-wrapper">
@@ -195,22 +162,11 @@
                                         </select>
                                     </div>
                                 </div>
-                                <!--
-                                <div class="legend">
-                                    <div class="legend-item bookings">Bookings</div>
-                                    <div class="legend-item appointments">Appointments</div>
-                                    <div class="legend-item no-service">No Service</div>
-                                    <div class="legend-item timeslot-taken">Timeslot Taken</div>
-                                    <div class="legend-item completed">Completed</div>
-                                </div>
-                                 -->
                                 <div id="calendar"></div>
                             </div>
                         </div>
                     </div>
-                    <!-- Start popup dialog box -->
-                    <div class="modal fade" id="event_entry_modal" tabindex="-1" role="dialog"
-                        aria-labelledby="modalLabel" aria-hidden="true">
+                    <div class="modal fade" id="event_entry_modal" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
                         <div class="modal-dialog modal-md" role="document">
                             <div class="modal-content">
                                 <div class="modal-header">
@@ -223,13 +179,11 @@
                                     <form action="save_event.php" method="POST">
                                         <div class="form-group">
                                             <label for="event_name">Event Name</label>
-                                            <input type="text" name="event_name" id="event_name" class="form-control"
-                                                placeholder="Enter your event name" required>
+                                            <input type="text" name="event_name" id="event_name" class="form-control" placeholder="Enter your event name" required>
                                         </div>
                                         <div class="form-group">
                                             <label for="procedure">Procedure</label>
-                                            <select class="form-control" id="procedure" name="procedure"
-                                                onchange="showProcedureDescription(this)">
+                                            <select class="form-control" id="procedure" name="procedure" onchange="showProcedureDescription(this)">
                                                 <?php
                                                 $procedures = $database->query("SELECT * FROM procedures");
                                                 while ($procedure = $procedures->fetch_assoc()) {
@@ -240,19 +194,16 @@
                                                 }
                                                 ?>
                                             </select>
-                                            <div id="procedure-description" class="alert alert-info mt-2"
-                                                style="display: none;">
+                                            <div id="procedure-description" class="alert alert-info mt-2" style="display: none;">
                                             </div>
                                         </div>
                                         <div class="form-group">
                                             <label for="patient_name">Patient Name</label>
-                                            <input type="text" name="patient_name" id="patient_name"
-                                                class="form-control" value="<?php echo $username; ?>" readonly>
+                                            <input type="text" name="patient_name" id="patient_name" class="form-control" value="<?php echo $username; ?>" readonly>
                                         </div>
                                         <div class="form-group">
                                             <label for="appointment_date">Date</label>
-                                            <input type="text" name="appointment_date" id="appointment_date"
-                                                class="form-control" readonly>
+                                            <input type="text" name="appointment_date" id="appointment_date" class="form-control" readonly>
                                         </div>
                                         <div class="form-group">
                                             <label for="appointment_time">Time</label>
@@ -281,12 +232,10 @@
                         </div>
                     </div>
                 </div>
-                <!-- right sidebar section -->
                 <div class="right-sidebar">
                     <div class="stats-section">
                         <div class="stats-container">
-                            <!-- First row -->
-                            <a href="dentist.php" class="stat-box-link">
+                            <a href="../dentist.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
                                         <h1 class="stat-number"><?php echo $doctorrow->num_rows; ?></h1>
@@ -298,8 +247,7 @@
                                 </div>
                             </a>
 
-                            <!-- Second row -->
-                            <a href="my_booking.php" class="stat-box-link">
+                            <a href="../my_booking.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
                                         <h1 class="stat-number"><?php echo $appointmentrow->num_rows ?></h1>
@@ -311,7 +259,7 @@
                                 </div>
                             </a>
 
-                            <a href="my_appointment.php" class="stat-box-link">
+                            <a href="../my_appointment.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
                                         <h1 class="stat-number"><?php
@@ -332,7 +280,6 @@
                     </div>
 
                     <div class="calendar-section">
-                        <!-- Color Guide -->
                         <div class="color-guide-container">
                             <div class="calendar-header">
                                 <h3 class="color-guide-title">Color guide</h3>
@@ -405,42 +352,45 @@
                 </div>
             </div>
 
-            <!-- End popup dialog box -->
             <script>
                 $(document).ready(function () {
+                    // Initialize with the first dentist by default if one exists
+                    var initialDentistId = $('#choose_dentist option:not(:first)').first().val();
+                    if (initialDentistId) {
+                        $('#docid').val(initialDentistId);
+                        display_events(initialDentistId);
+                    }
+
                     // Event listener for selecting a dentist
                     $('#choose_dentist').change(function () {
                         var dentistId = $(this).val();
                         if (dentistId) {
-                            $('#docid').val(dentistId);  // Set the hidden docid field
-                            display_events(dentistId);    // Fetch events for the selected dentist
+                            $('#docid').val(dentistId);
+                            display_events(dentistId);
                         } else {
                             alert("Please select a dentist.");
                         }
                     });
 
-                    // Bind the "Confirm" button click event using jQuery
+                    // Bind the "Confirm" button click event
                     $('#event_entry_modal').on('click', '.btn-primary', function () {
                         save_event();
                     });
                 });
 
-                // AJAX function to fetch and display events
-                // AJAX function to fetch and display events
                 function display_events(dentistId) {
                     var events = new Array();
                     var bookedTimes = [];
 
-                    // This function will fetch the booked times for the selected dentist and date
                     function fetchBookedTimes(date) {
                         $.ajax({
                             url: 'fetch_booked_times.php',
-                            data: { dentist_id: $('#choose_dentist').val(), date: date },
+                            data: { dentist_id: dentistId, date: date },
                             dataType: 'json',
                             success: function (response) {
                                 if (response.status) {
-                                    var bookedTimes = response.booked_times; // Array of booked times with counts
-                                    updateTimeDropdown(bookedTimes); // Update the dropdown with booked times
+                                    var bookedTimes = response.booked_times;
+                                    updateTimeDropdown(bookedTimes);
                                 }
                             },
                             error: function (xhr, status) {
@@ -449,7 +399,6 @@
                         });
                     }
 
-                    // This function will update the time dropdown by disabling the booked slots
                     function updateTimeDropdown(bookedTimes) {
                         var timeSlots = [
                             { time: "09:00:00", label: "9:00 AM  -  9:30 AM" },
@@ -466,15 +415,14 @@
                             { time: "16:30:00", label: "4:30 PM  -  5:00 PM" }
                         ];
 
-                        $('#appointment_time').empty(); // Clear existing options
+                        $('#appointment_time').empty();
 
                         $.each(timeSlots, function (index, slot) {
                             var option = $("<option></option>").val(slot.time).text(slot.label);
 
-                            // Check if the timeslot has reached three bookings
                             if (bookedTimes[slot.time] && bookedTimes[slot.time] >= 3) {
-                                option.attr("disabled", "disabled"); // Disable the option
-                                option.css("background-color", "#F46E34"); // Highlight as "Timeslot Taken"
+                                option.attr("disabled", "disabled");
+                                option.css("background-color", "#F46E34");
                             }
 
                             $('#appointment_time').append(option);
@@ -483,31 +431,30 @@
 
                     $.ajax({
                         url: 'display_event.php',
+                        data: { dentist_id: dentistId },
                         dataType: 'json',
                         success: function (response) {
                             var result = response.data;
                             $.each(result, function (i, item) {
-                                var eventColor = (item.status === 'appointment') ? '#6BB663' : item.color; // Set color to blue if status is "appointment"
+                                var eventColor = (item.status === 'appointment') ? '#6BB663' : item.color;
                                 events.push({
                                     event_id: result[i].appointment_id,
                                     title: result[i].title,
                                     start: result[i].start,
                                     end: result[i].end,
-                                    color: eventColor, // Set the color here
+                                    color: eventColor,
                                     url: result[i].url,
                                     status: result[i].status,
-                                    procedure_name: item.procedure_name,  // Add procedure name
-                                    patient_name: item.patient_name,      // Add patient name
-                                    dentist_name: item.dentist_name       // Add dentist name
+                                    procedure_name: item.procedure_name,
+                                    patient_name: item.patient_name,
+                                    dentist_name: item.dentist_name
                                 });
                             });
 
-                            // Destroy the existing calendar before reinitializing it
-                            if ($('#calendar').fullCalendar) {
+                            if ($('#calendar').fullCalendar('getView')) {
                                 $('#calendar').fullCalendar('destroy');
                             }
 
-                            // Reinitialize the calendar with new events
                             $('#calendar').fullCalendar({
                                 defaultView: 'month',
                                 timeZone: 'local',
@@ -525,28 +472,25 @@
 
                                     if (selectedDate < today) {
                                         alert("You cannot book appointments for past dates!");
-                                        return; // Stop the function
+                                        return;
                                     }
 
                                     if (selectedDate > maxAllowedDate) {
                                         alert("You can only book appointments within 2 months from today!");
-                                        return; // Stop the function
+                                        return;
                                     }
 
-                                    if (dayOfWeek === 4) { // 4 represents Thursday
+                                    if (dayOfWeek === 4) {
                                         alert("No Service during Thursdays.");
-                                        return; // Stop function if the date is a Thursday
+                                        return;
                                     }
-
 
                                     fetchBookedTimes(selectedDate);
-
                                     $('#event_entry_modal').modal('show');
                                 },
                                 events: events,
                                 eventRender: function (event, element, view) {
                                     element.on('click', function () {
-                                        // Fill modal fields with event data
                                         $('#modalProcedureName').text(event.procedure_name || 'N/A');
                                         $('#modalPatientName').text(event.patient_name || 'N/A');
                                         $('#modalDentistName').text(event.dentist_name || 'N/A');
@@ -563,21 +507,18 @@
                                         );
 
                                         $('#appointmentModal').on('show.bs.modal', function () {
-                                            $('#cancel-appointment').hide(); // Hide by default
-
+                                            $('#cancel-appointment').hide();
                                             if (event.status === 'booking') {
-                                                $('#confirm-booking').show(); // Show Confirm Booking button
-                                                $('#cancel-appointment').show(); // Show Cancel button
+                                                $('#confirm-booking').show();
+                                                $('#cancel-appointment').show();
                                             } else if (event.status === 'appointment') {
-                                                $('#confirm-booking').hide(); // Hide Confirm Booking button
-                                                $('#cancel-appointment').show(); // Show Cancel button
+                                                $('#confirm-booking').hide();
+                                                $('#cancel-appointment').show();
                                             } else if (event.status === 'completed') {
-                                                $('#confirm-booking').hide(); // Hide Confirm Booking button
-                                                $('#cancel-appointment').hide(); // Hide Cancel button
+                                                $('#confirm-booking').hide();
+                                                $('#cancel-appointment').hide();
                                             }
-
                                         });
-
 
                                         $('#cancel-appointment').off('click').on('click', function () {
                                             var confirmMessage = (event.status === 'booking')
@@ -588,15 +529,14 @@
                                                 $.ajax({
                                                     url: 'cancel_appointment.php',
                                                     type: 'POST',
-                                                    data: { appoid: event.event_id }, // Pass appointment ID
+                                                    data: { appoid: event.event_id },
                                                     success: function (response) {
                                                         let res = JSON.parse(response);
                                                         if (res.status) {
                                                             alert(event.status === 'booking'
                                                                 ? "Booking cancelled successfully."
                                                                 : "Appointment cancelled successfully.");
-
-                                                            location.reload(); // 💥 Force refresh the page immediately
+                                                            location.reload();
                                                         } else {
                                                             alert("Error: " + res.msg);
                                                         }
@@ -604,27 +544,21 @@
                                                 });
                                             }
                                         });
-                                        // Show the modal
                                         $('#appointmentModal').modal('show');
-
                                     });
 
                                     element.css('background-color', event.color);
-                                }
-
-                                ,
+                                },
                                 dayRender: function (date, cell) {
-                                    // Change the background of Thursdays to light red
-                                    if (date.day() === 4) {  // 4 is Thursday
+                                    if (date.day() === 4) {
                                         cell.css("background-color", "#FFF2F2");
                                     }
 
-                                    // Disable dates beyond 2 months from today
                                     var today = moment().startOf('day');
                                     var maxAllowedDate = moment().add(2, 'months').startOf('day');
                                     if (date < today || date > maxAllowedDate) {
-                                        cell.css("background-color", "#fff2f2"); // Gray out disabled dates
-                                        cell.css("pointer-events", "none"); // Disable click events
+                                        cell.css("background-color", "#fff2f2");
+                                        cell.css("pointer-events", "none");
                                     }
                                 }
                             });
@@ -635,57 +569,6 @@
                     });
                 }
 
-
-
-                // AJAX function to fetch event details
-                function fetchEventDetails(eventId) {
-                    $.ajax({
-                        url: 'fetch_event_details.php',  // You need to create this PHP file to fetch event details
-                        data: { event_id: eventId },
-                        dataType: 'json',
-                        success: function (response) {
-                            if (response.status) {
-                                var event = response.data;
-                                var eventDetails = `
-                    <strong>Event Name:</strong> ${event.title}<br>
-                    <strong>Patient Name:</strong> ${event.patient_name}<br>
-                    <strong>Procedure:</strong> ${event.procedure_name}<br>
-                    <strong>Appointment Time:</strong> ${event.start} - ${event.end}<br>
-                    <strong>Doctor:</strong> ${event.doc_name}
-                `;
-                                $('#event-info').html(eventDetails);
-                                $('#info_modal').modal('show');
-                            } else {
-                                alert('Error fetching event details.');
-                            }
-                        },
-                        error: function () {
-                            alert('Error fetching event details.');
-                        }
-                    });
-                }
-
-                // Modify eventRender to handle clicks on the event (Booking or Appointment)
-                $('#calendar').fullCalendar({
-                    // other configurations...
-                    events: events,
-                    eventRender: function (event, element) {
-                        // Add a click event for the event element
-                        element.on('click', function () {
-                            // When the event is clicked, fetch and display details
-                            fetchEventDetails(event.event_id);
-                        });
-
-                        element.css('background-color', event.color);  // Apply the color based on event data
-                    }
-                });
-
-
-
-
-
-
-                // Function to save the event
                 function save_event() {
                     var event_name = $("#event_name").val();
                     var procedure = $("#procedure").val();
@@ -713,7 +596,7 @@
                             patient_name: patient_name,
                             appointment_date: appointment_date,
                             appointment_time: appointment_time,
-                            docid: docid  // Send dentist ID as well
+                            docid: docid
                         },
                         success: function (response) {
                             $('#event_entry_modal').modal('hide');
@@ -734,6 +617,7 @@
                         }
                     });
                 }
+
                 function showProcedureDescription(select) {
                     var description = select.options[select.selectedIndex].getAttribute('data-description');
                     var descDiv = document.getElementById('procedure-description');
@@ -746,24 +630,16 @@
                     }
                 }
 
-                // Initialize on page load
                 document.addEventListener('DOMContentLoaded', function () {
-                    // Show first procedure's description if exists
                     var firstOption = document.querySelector('#procedure option');
                     if (firstOption) {
                         showProcedureDescription(document.getElementById('procedure'));
                     }
-
-                    // Add tooltips
                     $('[data-toggle="tooltip"]').tooltip();
                 });
-
-
             </script>
         </div>
-        <!-- Appointment Details Modal -->
-        <div class="modal fade" id="appointmentModal" tabindex="-1" role="dialog"
-            aria-labelledby="appointmentModalLabel" aria-hidden="true">
+        <div class="modal fade" id="appointmentModal" tabindex="-1" role="dialog" aria-labelledby="appointmentModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -779,7 +655,6 @@
                         <p><strong>Date:</strong> <span id="modalDate"></span></p>
                         <p><strong>Time:</strong> <span id="modalTime"></span></p>
                         <p><strong>Status:</strong> <span id="modalStatus"></span></p>
-
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-danger" id="cancel-appointment">Cancel</button>
@@ -788,7 +663,6 @@
                 </div>
             </div>
         </div>
-
+    </div>
 </body>
-
 </html>
