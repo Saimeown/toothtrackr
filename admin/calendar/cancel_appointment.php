@@ -1,11 +1,9 @@
 <?php
 require 'database_connection.php';
-require '../../vendor/autoload.php'; // Include PHPMailer
-
+require '../../vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-
 
 session_start();
 if (!isset($_SESSION['user'])) {
@@ -13,70 +11,19 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-
-function sendCancellationEmail($patientEmail, $patientName, $appointmentDate, $appointmentTime, $reason = "cancelled") {
-    $mail = new PHPMailer(true);
-   
-    try {
-        // Server settings
-        $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = 'songcodent@gmail.com';
-        $mail->Password = 'gzdr afos onqq ppnv';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
-
-
-        // Recipients
-        $mail->setFrom('songcodent@gmail.com', 'ToothTrackr');
-        $mail->addAddress($patientEmail, $patientName);
-
-
-        // Content
-        $mail->isHTML(true);
-        $mail->Subject = 'Appointment '.ucfirst($reason);
-       
-        if ($reason == 'cancelled') {
-            $mail->Body = "Dear $patientName,<br><br>
-                        We regret to inform you that your appointment scheduled for:<br><br>
-                        <strong>Date:</strong> $appointmentDate<br>
-                        <strong>Time:</strong> $appointmentTime<br><br>
-                        has been cancelled by the clinic.<br><br>
-                        Please contact us to reschedule or for more information.<br><br>
-                        We apologize for any inconvenience.<br><br>
-                        Sincerely,<br>
-                        Songco Dental and Medical Clinic";
-        } else {
-            $mail->Body = "Dear $patientName,<br><br>
-                        Your booking request for:<br><br>
-                        <strong>Date:</strong> $appointmentDate<br>
-                        <strong>Time:</strong> $appointmentTime<br><br>
-                        has been rejected by the clinic.<br><br>
-                        Please contact us to choose another time slot or for more information.<br><br>
-                        Sincerely,<br>
-                        Songco Dental and Medical Clinic";
-        }
-
-
-        $mail->send();
-        return true;
-    } catch (Exception $e) {
-        error_log("Failed to send cancellation email: " . $mail->ErrorInfo);
-        return false;
-    }
-}
-
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
-    $appoid = intval($_POST['appoid']); // Ensure it's an integer
+    $appoid = intval($_POST['appoid']);
+    $reason = $_POST['cancel_reason'];
+    $other_reason = isset($_POST['other_reason']) ? $_POST['other_reason'] : '';
+    $full_reason = ($reason == 'Other') ? "Other: " . $other_reason : $reason;
 
-
-    // Fetch full appointment details with patient information
+    // Fetch full appointment details with patient and doctor information
     $query = $con->prepare("
-        SELECT a.*, p.pname, p.pemail
+        SELECT a.*, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
         FROM appointment a
         JOIN patient p ON a.pid = p.pid
+        JOIN doctor d ON a.docid = d.docid
+        JOIN procedures pr ON a.procedure_id = pr.procedure_id
         WHERE a.appoid = ?
     ");
     $query->bind_param("i", $appoid);
@@ -84,62 +31,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
     $result = $query->get_result();
     $appointment = $result->fetch_assoc();
 
-
     if (!$appointment) {
         echo json_encode(['status' => false, 'msg' => 'Appointment not found.']);
         exit;
     }
 
-
     $newStatus = ($appointment['status'] === 'booking') ? 'rejected' : 'cancelled';
 
-
-    // Insert appointment into the archive table
-    $appodate = $appointment['appodate'] !== null ? date('Y-m-d', strtotime($appointment['appodate'])) : null;
+    // Insert appointment into the archive table with reason
     $archiveQuery = $con->prepare("
-        INSERT INTO appointment_archive (appoid, pid, docid, apponum, scheduleid, appodate, appointment_time, procedure_id, event_name, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO appointment_archive 
+        (appoid, pid, docid, apponum, scheduleid, appodate, appointment_time, 
+         procedure_id, event_name, status, cancel_reason, archived_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
     $archiveQuery->bind_param(
-        "iiisisssss",
+        "iiisissssss",
         $appointment['appoid'],
         $appointment['pid'],
         $appointment['docid'],
         $appointment['apponum'],
         $appointment['scheduleid'],
-        $appodate,
+        $appointment['appodate'],
         $appointment['appointment_time'],
         $appointment['procedure_id'],
         $appointment['event_name'],
-        $newStatus
+        $newStatus,
+        $full_reason
     );
-   
+
     if ($archiveQuery->execute()) {
         // Now delete the original appointment
         $deleteQuery = $con->prepare("DELETE FROM appointment WHERE appoid = ?");
         $deleteQuery->bind_param("i", $appoid);
-       
+        
         if ($deleteQuery->execute()) {
-            // Send cancellation email to patient
-            $emailSent = sendCancellationEmail(
-                $appointment['pemail'],
-                $appointment['pname'],
-                $appodate,
-                $appointment['appointment_time'],
-                $newStatus
-            );
-           
-            $response = [
-                'status' => true,
-                'msg' => "Appointment moved to archive and deleted successfully.",
-                'email_sent' => $emailSent
-            ];
-           
-            if (!$emailSent) {
-                $response['msg'] .= " (Failed to send notification email)";
+            // Send email notifications
+            $mail = new PHPMailer(true);
+            
+            try {
+                // Server settings
+                $mail->isSMTP();
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'songcodent@gmail.com';
+                $mail->Password = 'gzdr afos onqq ppnv';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+                
+                // Recipients - send to patient
+                $mail->setFrom('songcodent@gmail.com', 'ToothTrackr');
+                $mail->addAddress($appointment['pemail'], $appointment['pname']);
+                $mail->addCC($appointment['docemail'], $appointment['docname']); // CC to dentist
+                $mail->addCC('songcodent@gmail.com'); // CC to admin
+                
+                // Content
+                $mail->isHTML(true);
+                $mail->Subject = 'Appointment ' . ucfirst($newStatus) . ' Notification';
+                $mail->Body = "
+                    <h3>Appointment " . ucfirst($newStatus) . " Notification</h3>
+                    <p>Your appointment has been $newStatus by the clinic.</p>
+                    <p><strong>Patient Name:</strong> {$appointment['pname']}</p>
+                    <p><strong>Dentist Name:</strong> {$appointment['docname']}</p>
+                    <p><strong>Appointment Date:</strong> " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
+                    <p><strong>Appointment Time:</strong> {$appointment['appointment_time']}</p>
+                    <p><strong>Procedure:</strong> {$appointment['procedure_name']}</p>
+                    <p><strong>Reason:</strong> $full_reason</p>
+                    <p>Please contact the clinic if you wish to reschedule or for more information.</p>
+                ";
+                
+                $mail->send();
+                
+                echo json_encode([
+                    'status' => true,
+                    'msg' => "Appointment has been $newStatus successfully. Notification sent."
+                ]);
+            } catch (Exception $e) {
+                echo json_encode([
+                    'status' => true,
+                    'msg' => "Appointment has been $newStatus successfully, but failed to send notification email."
+                ]);
             }
-           
-            echo json_encode($response);
         } else {
             echo json_encode(['status' => false, 'msg' => 'Failed to delete the appointment.']);
         }

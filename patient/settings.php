@@ -843,230 +843,327 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
                 </div>
             </div>';
         } elseif ($action == 'edit_medical_history') {
-            // Fetching user details
-            $sqlmain = "SELECT * FROM patient WHERE pid='$id'";
-            $result = $database->query($sqlmain);
-            $row = $result->fetch_assoc();
-            $email = $row["pemail"];
-        
-            // Fetching medical history details
-            $sqlMedical = "SELECT * FROM medical_history WHERE email='$email'";
-            $resultMedical = $database->query($sqlMedical);
-            $rowMedical = $resultMedical->fetch_assoc();
-        
-            // Set default values if no medical history exists
-            $good_health = $rowMedical['good_health'] ?? 'Yes';
-            $under_treatment = $rowMedical['under_treatment'] ?? 'No';
-            $condition_treated = $rowMedical['condition_treated'] ?? '';
-            $serious_illness = $rowMedical['serious_illness'] ?? 'No';
-            $hospitalized = $rowMedical['hospitalized'] ?? 'No';
-            $medication = $rowMedical['medication'] ?? 'No';
-            $medication_specify = $rowMedical['medication_specify'] ?? '';
-            $tobacco = $rowMedical['tobacco'] ?? 'No';
-            $drugs = $rowMedical['drugs'] ?? 'No';
-            $allergies = isset($rowMedical['allergies']) ? explode(',', $rowMedical['allergies']) : [];
-            $blood_pressure = $rowMedical['blood_pressure'] ?? 'No';
-            $bleeding_time = $rowMedical['bleeding_time'] ?? 'No';
-            $health_conditions = isset($rowMedical['health_conditions']) ? explode(',', $rowMedical['health_conditions']) : [];
-        
-            echo '
-            <div id="popup1" class="overlay">
-                <div class="popup" style="max-height: 80vh; display: flex; flex-direction: column;">
-                    <div class="popup-header" style="flex-shrink: 0;">
-                        <h2 class="popup-title">Edit Medical History</h2>
-                        <a class="close" href="settings.php">&times;</a>
+    // Fetching user details
+    $sqlmain = "SELECT * FROM patient WHERE pid='$id'";
+    $result = $database->query($sqlmain);
+    $row = $result->fetch_assoc();
+    $email = $row["pemail"];
+    
+    // Fetching medical history details
+    $sqlMedical = "SELECT * FROM medical_history WHERE email='$email'";
+    $resultMedical = $database->query($sqlMedical);
+    $rowMedical = $resultMedical->num_rows > 0 ? $resultMedical->fetch_assoc() : [];
+    
+    // Set default values if no medical history exists
+    $good_health = $rowMedical['good_health'] ?? '';
+    $under_treatment = $rowMedical['under_treatment'] ?? '';
+    $condition_treated = $rowMedical['condition_treated'] ?? '';
+    $serious_illness = $rowMedical['serious_illness'] ?? '';
+    $hospitalized = $rowMedical['hospitalized'] ?? '';
+    $medication = $rowMedical['medication'] ?? '';
+    $medication_specify = $rowMedical['medication_specify'] ?? '';
+    $tobacco = $rowMedical['tobacco'] ?? '';
+    $drugs = $rowMedical['drugs'] ?? '';
+    $allergies = isset($rowMedical['allergies']) ? explode(',', $rowMedical['allergies']) : [];
+    $blood_pressure = $rowMedical['blood_pressure'] ?? '';
+    $bleeding_time = $rowMedical['bleeding_time'] ?? '';
+    $health_conditions = isset($rowMedical['health_conditions']) ? explode(',', $rowMedical['health_conditions']) : [];
+    
+    echo '
+    <div id="popup1" class="overlay">
+        <div class="popup" style="max-height: 80vh; display: flex; flex-direction: column;">
+            <div class="popup-header" style="flex-shrink: 0;">
+                <h2 class="popup-title">Medical History Form</h2>
+                <a class="close" href="settings.php">&times;</a>
+            </div>
+            <div class="popup-content" style="overflow-y: auto; flex-grow: 1; padding: 0 20px;">
+                <form action="settings.php" method="POST" class="popup-form" id="medical-history-form">
+                    <input type="hidden" name="update_medical_history" value="1">
+                    <input type="hidden" name="email" value="' . $email . '">
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">1. Are you in good health?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="good_health" value="Yes" ' . ($good_health == 'Yes' ? 'checked' : '') . ' id="good_health_yes">
+                                <label for="good_health_yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="good_health" value="No" ' . ($good_health == 'No' ? 'checked' : '') . ' id="good_health_no">
+                                <label for="good_health_no">No</label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="popup-content" style="overflow-y: auto; flex-grow: 1; padding: 0 20px;">
-                        <form action="settings.php" method="POST" class="popup-form">
-                            <input type="hidden" name="update_medical_history" value="1">
-                            <input type="hidden" name="email" value="' . $email . '">
-                            
-                            <div class="form-section">
-                                <div class="form-section-title">General Health</div>
-                                <div class="label-td">
-                                    <label for="good_health" class="form-label">Are you in good health?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="good_health" value="Yes" ' . ($good_health == 'Yes' ? 'checked' : '') . ' required>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="good_health" value="No" ' . ($good_health == 'No' ? 'checked' : '') . ' required>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="under_treatment" class="form-label">Are you under any medical treatment?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="under_treatment" value="Yes" ' . ($under_treatment == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="under_treatment" value="No" ' . ($under_treatment == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="condition_treated" class="form-label">If yes, specify condition treated:</label>
-                                    <input type="text" name="condition_treated" class="input-text" placeholder="Condition treated" value="' . htmlspecialchars($condition_treated) . '">
-                                </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">2. Are you under medical treatment now?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="under_treatment" value="Yes" ' . ($under_treatment == 'Yes' ? 'checked' : '') . ' id="under_treatment_yes">
+                                <label for="under_treatment_yes">Yes</label>
                             </div>
-                            
-                            <div class="form-section">
-                                <div class="form-section-title">Medical History</div>
-                                <div class="label-td">
-                                    <label for="serious_illness" class="form-label">Have you had any serious illness in the past?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="serious_illness" value="Yes" ' . ($serious_illness == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="serious_illness" value="No" ' . ($serious_illness == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="hospitalized" class="form-label">Have you ever been hospitalized?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="hospitalized" value="Yes" ' . ($hospitalized == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="hospitalized" value="No" ' . ($hospitalized == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="radio-option">
+                                <input type="radio" name="under_treatment" value="No" ' . ($under_treatment == 'No' ? 'checked' : '') . ' id="under_treatment_no">
+                                <label for="under_treatment_no">No</label>
                             </div>
-                            
-                            <div class="form-section">
-                                <div class="form-section-title">Current Medications</div>
-                                <div class="label-td">
-                                    <label for="medication" class="form-label">Are you currently on any medication?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="medication" value="Yes" ' . ($medication == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="medication" value="No" ' . ($medication == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="medication_specify" class="form-label">If yes, please specify:</label>
-                                    <input type="text" name="medication_specify" class="input-text" placeholder="Medication details" value="' . htmlspecialchars($medication_specify) . '">
-                                </div>
-                            </div>
-                            
-                            <div class="form-section">
-                                <div class="form-section-title">Habits</div>
-                                <div class="label-td">
-                                    <label for="tobacco" class="form-label">Do you use tobacco?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="tobacco" value="Yes" ' . ($tobacco == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="tobacco" value="No" ' . ($tobacco == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="drugs" class="form-label">Do you use recreational drugs?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="drugs" value="Yes" ' . ($drugs == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="drugs" value="No" ' . ($drugs == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="form-section">
-                                <div class="form-section-title">Allergies & Conditions</div>
-                                <div class="label-td">
-                                    <label for="allergies" class="form-label">Do you have any allergies?</label>
-                                    <div class="checkbox-group">
-                                        <div class="checkbox-option">
-                                            <input type="checkbox" name="allergies[]" value="Pollen" ' . (in_array('Pollen', $allergies) ? 'checked' : '') . '>
-                                            <label>Pollen</label>
-                                        </div>
-                                        <div class="checkbox-option">
-                                            <input type="checkbox" name="allergies[]" value="Penicillin" ' . (in_array('Penicillin', $allergies) ? 'checked' : '') . '>
-                                            <label>Penicillin</label>
-                                        </div>
-                                        <div class="checkbox-option">
-                                            <input type="checkbox" name="allergies[]" value="Latex" ' . (in_array('Latex', $allergies) ? 'checked' : '') . '>
-                                            <label>Latex</label>
-                                        </div>
-                                        <div class="checkbox-option">
-                                            <input type="checkbox" name="allergies[]" value="Other" ' . (in_array('Other', $allergies) ? 'checked' : '') . '>
-                                            <label>Other</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="blood_pressure" class="form-label">Do you have high blood pressure?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="blood_pressure" value="Yes" ' . ($blood_pressure == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="blood_pressure" value="No" ' . ($blood_pressure == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="bleeding_time" class="form-label">Do you have a prolonged bleeding time?</label>
-                                    <div class="radio-group">
-                                        <div class="radio-option">
-                                            <input type="radio" name="bleeding_time" value="Yes" ' . ($bleeding_time == 'Yes' ? 'checked' : '') . '>
-                                            <label>Yes</label>
-                                        </div>
-                                        <div class="radio-option">
-                                            <input type="radio" name="bleeding_time" value="No" ' . ($bleeding_time == 'No' ? 'checked' : '') . '>
-                                            <label>No</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="label-td">
-                                    <label for="health_conditions" class="form-label">Any other health conditions?</label>
-                                    <input type="text" name="health_conditions" class="input-text" placeholder="Other health conditions" value="' . htmlspecialchars(implode(', ', $health_conditions)) . '">
-                                </div>
-                            </div>
-                        </form>
+                        </div>
+                        <div class="label-td" id="condition_treated_field" style="margin-top: 10px; ' . ($under_treatment != 'Yes' ? 'display: none;' : '') . '">
+                            <label for="condition_treated" class="form-label">If yes, what condition is being treated?</label>
+                            <input type="text" name="condition_treated" class="input-text" placeholder="Condition being treated" value="' . htmlspecialchars($condition_treated) . '">
+                        </div>
                     </div>
-                    <div class="btn-row" style="flex-shrink: 0; padding: 20px; border-top: 1px solid #eee;">
-                        <a href="settings.php" class="btn-outline">Cancel</a>
-                        <button type="submit" form="medical-history-form" class="btn-primary">Save Changes</button>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">3. Have you ever had a serious illness/surgical operation?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="serious_illness" value="Yes" ' . ($serious_illness == 'Yes' ? 'checked' : '') . ' id="serious_illness_yes">
+                                <label for="serious_illness_yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="serious_illness" value="No" ' . ($serious_illness == 'No' ? 'checked' : '') . ' id="serious_illness_no">
+                                <label for="serious_illness_no">No</label>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>';
-        } elseif ($action == 'change_password') {
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">4. Have you ever been hospitalized?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="hospitalized" value="Yes" ' . ($hospitalized == 'Yes' ? 'checked' : '') . ' id="hospitalized_yes">
+                                <label for="hospitalized_yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="hospitalized" value="No" ' . ($hospitalized == 'No' ? 'checked' : '') . ' id="hospitalized_no">
+                                <label for="hospitalized_no">No</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">5. Are you taking any prescription/non-prescription medication?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="medication" value="Yes" ' . ($medication == 'Yes' ? 'checked' : '') . ' id="medication_yes">
+                                <label for="medication_yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="medication" value="No" ' . ($medication == 'No' ? 'checked' : '') . ' id="medication_no">
+                                <label for="medication_no">No</label>
+                            </div>
+                        </div>
+                        <div class="label-td" id="medication_specify_field" style="margin-top: 10px; ' . ($medication != 'Yes' ? 'display: none;' : '') . '">
+                            <label for="medication_specify" class="form-label">If yes, please specify:</label>
+                            <input type="text" name="medication_specify" class="input-text" placeholder="Medication details" value="' . htmlspecialchars($medication_specify) . '">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">6. Do you use tobacco products?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="tobacco" value="Yes" ' . ($tobacco == 'Yes' ? 'checked' : '') . ' id="tobacco_yes">
+                                <label for="tobacco_yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="tobacco" value="No" ' . ($tobacco == 'No' ? 'checked' : '') . ' id="tobacco_no">
+                                <label for="tobacco_no">No</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">7. Do you use alcohol, cocaine or other dangerous drugs?</div>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" name="drugs" value="Yes" ' . ($drugs == 'Yes' ? 'checked' : '') . ' id="drugs_yes">
+                                <label for="drugs_yes">Yes</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" name="drugs" value="No" ' . ($drugs == 'No' ? 'checked' : '') . ' id="drugs_no">
+                                <label for="drugs_no">No</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">8. Are you allergic to any of the following?</div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="allergies[]" value="Local Anesthetics" ' . (in_array('Local Anesthetics', $allergies) ? 'checked' : '') . ' id="allergy_anesthetics">
+                                <label for="allergy_anesthetics">Local Anesthetics</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="allergies[]" value="Penicillin Products" ' . (in_array('Penicillin Products', $allergies) ? 'checked' : '') . ' id="allergy_penicillin">
+                                <label for="allergy_penicillin">Penicillin Products</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="allergies[]" value="Sulfa Drugs" ' . (in_array('Sulfa Drugs', $allergies) ? 'checked' : '') . ' id="allergy_sulfa">
+                                <label for="allergy_sulfa">Sulfa Drugs</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="allergies[]" value="Aspirin" ' . (in_array('Aspirin', $allergies) ? 'checked' : '') . ' id="allergy_aspirin">
+                                <label for="allergy_aspirin">Aspirin</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="allergies[]" value="Latex" ' . (in_array('Latex', $allergies) ? 'checked' : '') . ' id="allergy_latex">
+                                <label for="allergy_latex">Latex</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="allergies[]" value="Other" ' . (in_array('Other', $allergies) ? 'checked' : '') . ' id="allergy_other">
+                                <label for="allergy_other">Other</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">9. Please provide the following information:</div>
+                        <div class="label-td">
+                            <label for="blood_pressure" class="form-label">Blood Pressure:</label>
+                            <input type="text" name="blood_pressure" class="input-text" placeholder="Blood pressure" value="' . htmlspecialchars($blood_pressure) . '">
+                        </div>
+                        <div class="label-td">
+                            <label for="bleeding_time" class="form-label">Bleeding Time:</label>
+                            <input type="text" name="bleeding_time" class="input-text" placeholder="Bleeding time" value="' . htmlspecialchars($bleeding_time) . '">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <div class="form-section-title">10. Do you have any of the following?</div>
+                        <div class="checkbox-group" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="High Blood Pressure" ' . (in_array('High Blood Pressure', $health_conditions) ? 'checked' : '') . ' id="hc_high_bp">
+                                <label for="hc_high_bp">High Blood Pressure</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Heart Attack" ' . (in_array('Heart Attack', $health_conditions) ? 'checked' : '') . ' id="hc_heart_attack">
+                                <label for="hc_heart_attack">Heart Attack</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Kidney Disease" ' . (in_array('Kidney Disease', $health_conditions) ? 'checked' : '') . ' id="hc_kidney">
+                                <label for="hc_kidney">Kidney Disease</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Low Blood Pressure" ' . (in_array('Low Blood Pressure', $health_conditions) ? 'checked' : '') . ' id="hc_low_bp">
+                                <label for="hc_low_bp">Low Blood Pressure</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Thyroid Problem" ' . (in_array('Thyroid Problem', $health_conditions) ? 'checked' : '') . ' id="hc_thyroid">
+                                <label for="hc_thyroid">Thyroid Problem</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Diabetes" ' . (in_array('Diabetes', $health_conditions) ? 'checked' : '') . ' id="hc_diabetes">
+                                <label for="hc_diabetes">Diabetes</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Epilepsy/Convulsions" ' . (in_array('Epilepsy/Convulsions', $health_conditions) ? 'checked' : '') . ' id="hc_epilepsy">
+                                <label for="hc_epilepsy">Epilepsy/Convulsions</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Heart Disease" ' . (in_array('Heart Disease', $health_conditions) ? 'checked' : '') . ' id="hc_heart_disease">
+                                <label for="hc_heart_disease">Heart Disease</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Chest Pain" ' . (in_array('Chest Pain', $health_conditions) ? 'checked' : '') . ' id="hc_chest_pain">
+                                <label for="hc_chest_pain">Chest Pain</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="AIDS or HIV Infection" ' . (in_array('AIDS or HIV Infection', $health_conditions) ? 'checked' : '') . ' id="hc_aids">
+                                <label for="hc_aids">AIDS or HIV Infection</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Heart Murmur" ' . (in_array('Heart Murmur', $health_conditions) ? 'checked' : '') . ' id="hc_murmur">
+                                <label for="hc_murmur">Heart Murmur</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Stroke" ' . (in_array('Stroke', $health_conditions) ? 'checked' : '') . ' id="hc_stroke">
+                                <label for="hc_stroke">Stroke</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Sexually Transmitted Disease" ' . (in_array('Sexually Transmitted Disease', $health_conditions) ? 'checked' : '') . ' id="hc_std">
+                                <label for="hc_std">Sexually Transmitted Disease</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Hepatitis/Liver Disease" ' . (in_array('Hepatitis/Liver Disease', $health_conditions) ? 'checked' : '') . ' id="hc_hepatitis">
+                                <label for="hc_hepatitis">Hepatitis/Liver Disease</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Cancer/Tumors" ' . (in_array('Cancer/Tumors', $health_conditions) ? 'checked' : '') . ' id="hc_cancer">
+                                <label for="hc_cancer">Cancer/Tumors</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Stomach Ulcers" ' . (in_array('Stomach Ulcers', $health_conditions) ? 'checked' : '') . ' id="hc_ulcers">
+                                <label for="hc_ulcers">Stomach Ulcers</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Rheumatic Fever" ' . (in_array('Rheumatic Fever', $health_conditions) ? 'checked' : '') . ' id="hc_rheumatic">
+                                <label for="hc_rheumatic">Rheumatic Fever</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Anemia" ' . (in_array('Anemia', $health_conditions) ? 'checked' : '') . ' id="hc_anemia">
+                                <label for="hc_anemia">Anemia</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Fainting or Seizures" ' . (in_array('Fainting or Seizures', $health_conditions) ? 'checked' : '') . ' id="hc_seizures">
+                                <label for="hc_seizures">Fainting or Seizures</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Hay Fever/Allergies" ' . (in_array('Hay Fever/Allergies', $health_conditions) ? 'checked' : '') . ' id="hc_hay_fever">
+                                <label for="hc_hay_fever">Hay Fever/Allergies</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Angina" ' . (in_array('Angina', $health_conditions) ? 'checked' : '') . ' id="hc_angina">
+                                <label for="hc_angina">Angina</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Radiation Therapy" ' . (in_array('Radiation Therapy', $health_conditions) ? 'checked' : '') . ' id="hc_radiation">
+                                <label for="hc_radiation">Radiation Therapy</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Respiratory Problems" ' . (in_array('Respiratory Problems', $health_conditions) ? 'checked' : '') . ' id="hc_respiratory">
+                                <label for="hc_respiratory">Respiratory Problems</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Asthma" ' . (in_array('Asthma', $health_conditions) ? 'checked' : '') . ' id="hc_asthma">
+                                <label for="hc_asthma">Asthma</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Joint Replacement/Implant" ' . (in_array('Joint Replacement/Implant', $health_conditions) ? 'checked' : '') . ' id="hc_joint">
+                                <label for="hc_joint">Joint Replacement/Implant</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Hepatitis/Jaundice" ' . (in_array('Hepatitis/Jaundice', $health_conditions) ? 'checked' : '') . ' id="hc_jaundice">
+                                <label for="hc_jaundice">Hepatitis/Jaundice</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Emphysema" ' . (in_array('Emphysema', $health_conditions) ? 'checked' : '') . ' id="hc_emphysema">
+                                <label for="hc_emphysema">Emphysema</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Heart Surgery" ' . (in_array('Heart Surgery', $health_conditions) ? 'checked' : '') . ' id="hc_heart_surgery">
+                                <label for="hc_heart_surgery">Heart Surgery</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Tuberculosis" ' . (in_array('Tuberculosis', $health_conditions) ? 'checked' : '') . ' id="hc_tb">
+                                <label for="hc_tb">Tuberculosis</label>
+                            </div>
+                            <div class="checkbox-option">
+                                <input type="checkbox" name="health_conditions[]" value="Bleeding Problem" ' . (in_array('Bleeding Problem', $health_conditions) ? 'checked' : '') . ' id="hc_bleeding">
+                                <label for="hc_bleeding">Bleeding Problem</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="btn-row" style="flex-shrink: 0; padding: 20px; border-top: 1px solid #eee;">
+                <a href="settings.php" class="btn-outline">Cancel</a>
+                <button type="submit" form="medical-history-form" class="btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    ';
+} elseif ($action == 'change_password') {
             echo '
             <div id="popup1" class="overlay">
                 <div class="popup">
@@ -1191,6 +1288,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
                     });
                 });
             }
+        });
+    </script>
+    <script>
+        // Show/hide conditional fields
+        document.addEventListener('DOMContentLoaded', function() {
+            // Under treatment field
+            document.querySelectorAll('input[name="under_treatment"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    document.getElementById('condition_treated_field').style.display = 
+                        this.value === 'Yes' ? 'block' : 'none';
+                });
+            });
+            
+            // Medication field
+            document.querySelectorAll('input[name="medication"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    document.getElementById('medication_specify_field').style.display = 
+                        this.value === 'Yes' ? 'block' : 'none';
+                });
+            });
         });
     </script>
 </body>

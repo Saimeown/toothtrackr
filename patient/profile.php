@@ -747,43 +747,49 @@ $today = date('Y-m-d');
                                                     <div class="info-grid">
                                                         <div class="info-item">
                                                             <label class="info-label">Good Health</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['good_health']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['good_health']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Under Treatment</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['under_treatment']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['under_treatment']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Serious Illness</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['serious_illness']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['serious_illness']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Hospitalized</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['hospitalized']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['hospitalized']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Medications</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['medication']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['medication']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Tobacco Use</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['tobacco']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['tobacco']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Drug Use</label>
-                                                            <span
-                                                                class="info-value"><?php echo htmlspecialchars($medical['drugs']); ?></span>
+                                                            <span class="info-value"><?php echo htmlspecialchars($medical['drugs']); ?></span>
                                                         </div>
                                                         <div class="info-item">
                                                             <label class="info-label">Allergies</label>
-                                                            <span
-                                                                class="info-value"><?php echo !empty($medical['allergies']) ? htmlspecialchars($medical['allergies']) : 'None reported'; ?></span>
+                                                            <span class="info-value"><?php echo !empty($medical['allergies']) ? htmlspecialchars($medical['allergies']) : 'None reported'; ?></span>
+                                                        </div>
+                                                        <!-- Add this new section for health conditions -->
+                                                        <div class="info-item">
+                                                            <label class="info-label">Health Conditions</label>
+                                                            <span class="info-value"><?php echo !empty($medical['health_conditions']) ? htmlspecialchars($medical['health_conditions']) : 'None reported'; ?></span>
+                                                        </div>
+                                                        <!-- Add these if you want to display blood pressure and bleeding time -->
+                                                        <div class="info-item">
+                                                            <label class="info-label">Blood Pressure Issues</label>
+                                                            <span class="info-value"><?php echo !empty($medical['blood_pressure']) ? htmlspecialchars($medical['blood_pressure']) : 'None reported'; ?></span>
+                                                        </div>
+                                                        <div class="info-item">
+                                                            <label class="info-label">Bleeding Time Issues</label>
+                                                            <span class="info-value"><?php echo !empty($medical['bleeding_time']) ? htmlspecialchars($medical['bleeding_time']) : 'None reported'; ?></span>
                                                         </div>
                                                     </div>
                                                 </div>

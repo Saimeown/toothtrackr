@@ -82,6 +82,9 @@
             color: red;
             font-weight: bold;
         }
+        .remove-btn {
+            width: 122px;
+        }
     </style>
     <?php
     date_default_timezone_set('Asia/Singapore');
@@ -543,69 +546,83 @@
     </div>
 
     <?php
-    if ($_GET && isset($_GET['action'])) {
-        $id = $_GET["id"];
-        $action = $_GET["action"];
+if ($_GET && isset($_GET['action'])) {
+    $id = $_GET["id"];
+    $action = $_GET["action"];
 
-        if ($action == 'cancel') {
-            $docname = $_GET["doc"];
+    if ($action == 'cancel') {
+        $docname = $_GET["doc"];
+        
+        // Get appointment details
+        $appointmentQuery = $database->query("SELECT a.*, d.docemail, p.pemail, p.pname 
+                                             FROM appointment a
+                                             JOIN doctor d ON a.docid = d.docid
+                                             JOIN patient p ON a.pid = p.pid
+                                             WHERE a.appoid = '$id'");
+        $appointment = $appointmentQuery->fetch_assoc();
 
-            echo '
-            <div id="popup1" class="overlay">
-                <div class="popup">
-                    <center>
-                        <h2>Confirm Cancellation</h2>
-                        <a class="close" href="my_appointment.php">&times;</a>
-                        <div class="content">
-                            Are you sure you want to cancel this appointment?<br><br>
-                            Dentist: <b>' . htmlspecialchars(substr($docname, 0, 40)) . '</b><br><br>
-                        </div>
-                        <div style="display: flex;justify-content: center;">
-                            <a href="cancel_appointment.php?id=' . $id . '&source=patient" class="non-style-link">
-                                <button class="btn-primary btn" style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;">
-                                    <font class="tn-in-text">Yes, Cancel</font>
-                                </button>
-                            </a>&nbsp;&nbsp;&nbsp;
-                            <a href="my_appointment.php" class="non-style-link">
-                                <button class="btn-primary btn" style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;">
-                                    <font class="tn-in-text">No, Go Back</font>
-                                </button>
-                            </a>
-                        </div>
-                    </center>
-                </div>
-            </div>
-            ';
-        }
-    }
-    
-    if (!empty($statusMessage)) {
-        echo '<div id="statusPopup" class="popup" style="display: none;">
-            <div class="popup-content">
-                <span id="closePopup" class="close">&times;</span>
-                <p id="popupMessage" class="' . $messageClass . '">' . $statusMessage . '</p>
+        echo '
+        <div id="popup1" class="overlay">
+            <div class="popup" style="display: flex; height: 350px; width: 500px;">
+                <center>
+                    <h2>Confirm Cancellation</h2>
+                    <a class="close" href="my_appointment.php">&times;</a>
+                    <div class="content" style="height: 150px;">
+                        <form action="cancel_appointment.php" method="POST" id="cancelForm">
+                            <input type="hidden" name="id" value="' . $id . '">
+                            <input type="hidden" name="source" value="patient">
+                            <input type="hidden" name="patient_email" value="' . $appointment['pemail'] . '">
+                            <input type="hidden" name="dentist_email" value="' . $appointment['docemail'] . '">
+                            <input type="hidden" name="appointment_date" value="' . $appointment['appodate'] . '">
+                            <input type="hidden" name="appointment_time" value="' . $appointment['appointment_time'] . '">
+                            <input type="hidden" name="procedure_name" value="' . $appointment['procedure_name'] . '">
+                            
+                            <p>Are you sure you want to cancel this appointment?</p><br>
+                            
+                            <label for="cancel_reason">Reason for cancellation:</label><br>
+                            <select name="cancel_reason" id="cancel_reason" required style="width: 80%; padding: 8px; margin: 10px 0;">
+                                <option value="">-- Select a reason --</option>
+                                <option value="Schedule Conflict">Schedule Conflict</option>
+                                <option value="Financial Reasons">Financial Reasons</option>
+                                <option value="Found Another Dentist">Found Another Dentist</option>
+                                <option value="No Longer Needed">No Longer Needed</option>
+                                <option value="Personal Reasons">Personal Reasons</option>
+                                <option value="Other">Other (please specify)</option>
+                            </select>
+                            
+                            <div id="otherReasonContainer" style="display: none; width: 80%; margin: 10px auto;">
+                                <label for="other_reason">Please specify:</label>
+                                <input type="text" name="other_reason" id="other_reason" style="width: 100%; padding: 8px;">
+                            </div>
+                        </form>
+                    </div>
+                    <div style="display: flex;justify-content: center;">
+                        <button type="submit" form="cancelForm" class="btn-primary btn" style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;">
+                            <font class="tn-in-text">Confirm Cancellation</font>
+                        </button>
+                        <a href="my_appointment.php" class="non-style-link">
+                            <button class="btn-primary btn" style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;">
+                                <font class="tn-in-text">Go Back</font>
+                            </button>
+                        </a>
+                    </div>
+                </center>
             </div>
         </div>
         <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                const popup = document.getElementById("statusPopup");
-                popup.style.display = "flex";
-                
-                document.getElementById("closePopup").onclick = function() {
-                    popup.style.display = "none";
-                    window.location.href = "my_appointment.php"; // Remove query params
-                };
-                
-                window.onclick = function(event) {
-                    if (event.target == popup) {
-                        popup.style.display = "none";
-                        window.location.href = "my_appointment.php"; // Remove query params
-                    }
-                };
+            document.getElementById("cancel_reason").addEventListener("change", function() {
+                const otherContainer = document.getElementById("otherReasonContainer");
+                if (this.value === "Other") {
+                    otherContainer.style.display = "block";
+                } else {
+                    otherContainer.style.display = "none";
+                }
             });
-        </script>';
+        </script>
+        ';
     }
-    ?>
+}
+?>
 
     <script>
         // Function to clear search and redirect

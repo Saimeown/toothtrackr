@@ -101,7 +101,7 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -111,17 +111,45 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
             background-color: #fff;
             padding: 20px;
             border-radius: 10px;
-            width: 300px;
+            width: 500px;
             text-align: center;
-            max-height: 300px; /* Set max height */
+            max-height: 400px;
             overflow-y: auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
         }
 
-        .modal-buttons {
+        .modal-content h2 {
+            color: #333;
+            font-size: 1.4rem;
+            margin: 0 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-body {
+            padding: 10px 0;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        .modal-body p {
+            margin: 12px 0;
+            color: #555;
+        }
+
+        .modal-body b {
+            color: #333;
+            font-weight: 600;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .modal-footer {
             margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
             display: flex;
-            justify-content: center;
+            justify-content: flex-end;
             gap: 10px;
         }
 
@@ -155,6 +183,27 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
             background-color: #da190b;
         }
         
+        /* Form styles */
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         /* Action buttons */
         .action-buttons {
             display: flex;
@@ -315,124 +364,10 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
         .calendar-date.other-month {
             color: #ccc;
         }
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            width: 400px; /* Slightly wider for better text display */
-            max-height: 300px;
-            overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            position: relative;
-        }
-
-        .modal-content h2 {
-            margin: 0 0 15px 0;
-            font-size: 1.3rem;
-            color: #333;
-            text-align: center;
-        }
-
-        .modal-content .content {
-            padding: 10px;
-            text-align: left;
-            line-height: 1.5;
-        }
-
-        .modal-content .content p {
-            margin: 10px 0;
-        }
-
-        .modal-content .content b {
-            font-weight: 600;
-            color: #333;
-        }
-
-        .modal-buttons {
-            margin-top: 20px;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-        }
-        /* Improved Modal Styles */
-        .modal-content {
-            background: white;
-            border-radius: 8px;
-            width: 500px;
-            height: 370px;
-            max-height: 400px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            position: relative;
-            overflow: hidden;
-            justify-items: center;
-            align-items: center;
-        }
-
-        .modal-content h2 {
-            color: #333;
-            font-size: 1.4rem;
-            margin: 0 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .modal-body {
-            padding: 10px 0;
-            line-height: 1.6;
-            justify-items: left;
-            align-items: left;
-        }
-
-        .modal-body p {
-            margin: 12px 0;
-            color: #555;
-            justify-items: left;
-            align-items: left;
-        }
-
-        .modal-body b {
-            color: #333;
-            font-weight: 600;
-            display: inline-block;
-            min-width: 100px;
-            justify-items: left;
-            align-items: left;
-        }
-
-        .modal-footer {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
     </style>
 </head>
 
 <body>
-    <?php
-
-    if (isset($_SESSION["user"])) {
-        if (($_SESSION["user"]) == "" or $_SESSION['usertype'] != 'a') {
-            header("location: ../login.php");
-        }
-    } else {
-        header("location: ../login.php");
-    }
-
-    include("../connection.php");
-
-    // Get totals for right sidebar
-    $doctorrow = $database->query("SELECT * FROM doctor WHERE status='active'");
-    $patientrow = $database->query("SELECT * FROM patient WHERE status='active'");
-    $appointmentrow = $database->query("SELECT * FROM appointment WHERE status='appointment'");
-    $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'");
-    ?>
-
     <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-logo">
@@ -795,45 +730,107 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmationModal" class="modal" style="display: none;">
+    <!-- Enhanced Cancellation Modal -->
+    <div id="cancelModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <h2>Cancel Appointment Confirmation</h2>
-            <div class="modal-body" id="modalContent">
-                <!-- Content will be inserted here -->
+            <h2>Cancel Appointment</h2>
+            <div class="modal-body">
+                <form id="cancelForm">
+                    <input type="hidden" name="appoid" id="cancelAppoid">
+                    <input type="hidden" name="source" value="admin">
+                    <p>Are you sure you want to cancel this appointment?</p>
+                    <div class="form-group">
+                        <label for="cancelReason">Reason for cancellation:</label>
+                        <select class="form-control" name="cancel_reason" id="cancelReason" required>
+                            <option value="">-- Select a reason --</option>
+                            <option value="Dentist Unavailable">Dentist Unavailable</option>
+                            <option value="Clinic Closed">Clinic Closed</option>
+                            <option value="Emergency Situation">Emergency Situation</option>
+                            <option value="Patient Request">Patient Request</option>
+                            <option value="Other">Other (please specify)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="otherReasonGroup" style="display:none;">
+                        <label for="otherReason">Please specify:</label>
+                        <input type="text" class="form-control" name="other_reason" id="otherReason">
+                    </div>
+                </form>
             </div>
             <div class="modal-footer">
-                <button onclick="closeModal()" class="btn-secondary">No</button>
-                <button onclick="proceedWithCancel()" class="btn-primary">Yes</button>
+                <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+                <button onclick="submitCancelForm()" class="btn-primary">Confirm Cancellation</button>
             </div>
         </div>
     </div>
 
     <script>
         let currentAppoid = null;
+        let currentPatientName = null;
+        let currentEventName = null;
 
         function confirmCancel(appoid, patientName, eventName) {
             currentAppoid = appoid;
-            document.getElementById("modalContent").innerHTML = `
-                <p>You're about to cancel this appointment:</p>
-                <p><b>Event:</b> ${eventName}</p>
-                <p><b>Patient:</b> ${patientName}</p>
-                <p>This action cannot be undone.</p>
-            `;
-            document.getElementById("confirmationModal").style.display = "flex";
+            currentPatientName = patientName;
+            currentEventName = eventName;
+            
+            // Reset form
+            document.getElementById("cancelForm").reset();
+            document.getElementById("otherReasonGroup").style.display = "none";
+            
+            // Set the appointment ID
+            document.getElementById("cancelAppoid").value = appoid;
+            
+            // Show modal
+            document.getElementById("cancelModal").style.display = "flex";
         }
 
-        function proceedWithCancel() {
-            if (currentAppoid) {
-                window.location.href = `delete-appointment.php?id=${currentAppoid}`;
+        // Handle reason dropdown change
+        document.getElementById("cancelReason").addEventListener("change", function() {
+            const otherContainer = document.getElementById("otherReasonGroup");
+            if (this.value === "Other") {
+                otherContainer.style.display = "block";
+            } else {
+                otherContainer.style.display = "none";
             }
+        });
+
+        function submitCancelForm() {
+            const form = document.getElementById("cancelForm");
+            const reasonSelect = document.getElementById("cancelReason");
+            
+            if (!reasonSelect.value) {
+                alert("Please select a cancellation reason");
+                return;
+            }
+            
+            // Submit form via AJAX
+            const formData = new FormData(form);
+            
+            fetch("delete-appointment.php", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status) {
+                    alert(data.message);
+                    window.location.reload(); // Refresh the page
+                } else {
+                    alert("Error: " + data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("An error occurred while processing your request.");
+            });
         }
 
         function closeModal() {
-            document.getElementById("confirmationModal").style.display = "none";
+            document.getElementById("cancelModal").style.display = "none";
             currentAppoid = null;
+            currentPatientName = null;
+            currentEventName = null;
         }
     </script>
 </body>
-
 </html>
