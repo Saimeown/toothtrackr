@@ -572,8 +572,7 @@
                 <div class="popup">
                     <center>
                         <a class="close" href="patient.php">&times;</a>
-                        <div class="content">
-                        </div>
+                        
                         <div style="display: flex; justify-content: center;">
                             <table width="90%" class="sub-table scrolldown add-doc-form-container" border="0" style="text-align: left;">
                                 <tr>
