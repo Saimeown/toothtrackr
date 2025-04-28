@@ -481,15 +481,12 @@
             $apponum = $_GET["apponum"];
             echo '
                 <div id="popup1" class="overlay">
-                        <div class="popup">
+                        <div class="popup" style="width: 350px;">
                         <center>
                             <h2>Are you sure?</h2>
                             <a class="close" href="appointment.php">&times;</a>
-                            <div class="content">
+                            <div class="content" style="height: 100px;">
                                 You want to delete this record<br><br>
-                                Patient Name: &nbsp;<b>' . substr($nameget, 0, 40) . '</b><br>
-                                Appointment number &nbsp; : <b>' . substr($apponum, 0, 40) . '</b><br><br>
-                                
                             </div>
                             <div style="display: flex;justify-content: center;">
                             <a href="delete-appointment.php?id=' . $id . '" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"<font class="tn-in-text">&nbsp;Yes&nbsp;</font></button></a>&nbsp;&nbsp;&nbsp;

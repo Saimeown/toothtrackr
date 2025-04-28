@@ -40,24 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
 
     // Insert appointment into the archive table with reason
     $archiveQuery = $con->prepare("
-        INSERT INTO appointment_archive 
-        (appoid, pid, docid, apponum, scheduleid, appodate, appointment_time, 
-         procedure_id, event_name, status, cancel_reason, archived_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    INSERT INTO appointment_archive 
+    (appoid, pid, docid, appodate, appointment_time, 
+    procedure_id, event_name, status, cancel_reason, archived_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
+
+    // Convert the time format before binding
+    $time_parts = explode('-', $appointment['appointment_time']);
+    $start_time = trim($time_parts[0]) . ':00'; // Convert "9:00" to "9:00:00"
+
     $archiveQuery->bind_param(
-        "iiisissssss",
-        $appointment['appoid'],
-        $appointment['pid'],
-        $appointment['docid'],
-        $appointment['apponum'],
-        $appointment['scheduleid'],
-        $appointment['appodate'],
-        $appointment['appointment_time'],
-        $appointment['procedure_id'],
-        $appointment['event_name'],
-        $newStatus,
-        $full_reason
+    "iiissssss",
+    $appointment['appoid'],
+    $appointment['pid'],
+    $appointment['docid'],
+    $appointment['appodate'],
+    $start_time, // Use the converted time format
+    $appointment['procedure_id'],
+    $appointment['event_name'],
+    $newStatus,
+    $full_reason
     );
 
     if ($archiveQuery->execute()) {

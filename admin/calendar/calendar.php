@@ -161,42 +161,50 @@
                             </button>
                         </div>
                         <div class="modal-body">
-                            <form action="save_event.php" method="POST">
+                            <form id="eventForm">
                                 <div class="form-group">
                                     <label for="event_name">Event Name</label>
                                     <input type="text" name="event_name" id="event_name" class="form-control" placeholder="Enter your event name" required>
                                 </div>
                                 <div class="form-group">
                                     <label for="procedure">Procedure</label>
-                                    <select class="form-control" id="procedure" name="procedure">
+                                    <select class="form-control" id="procedure" name="procedure" required>
+                                        <option value="">Select a Procedure</option>
                                         <?php echo $procedure_options; ?>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label for="patient_name">Patient Name</label>
-                                    <select class="form-control" id="patient_name" name="patient_name">
+                                    <select class="form-control" id="patient_name" name="patient_name" required>
                                         <option value="">Select a Patient</option>
                                         <?php echo $patient_name; ?>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label for="appointment_date">Date</label>
-                                    <input type="text" name="appointment_date" id="appointment_date" class="form-control" readonly>
+                                    <input type="text" name="appointment_date" id="appointment_date" class="form-control" readonly required>
                                 </div>
                                 <div class="form-group">
                                     <label for="appointment_time">Time</label>
-                                    <select class="form-control" id="appointment_time" name="appointment_time">
-                                        <option value="9:00-10:00">9:00 AM - 10:00 AM</option>
-                                        <option value="10:00-11:00">10:00 AM - 11:00 AM</option>
-                                        <option value="11:00-12:00">11:00 AM - 12:00 PM</option>
-                                        <option value="1:00-2:00">1:00 PM - 2:00 PM</option>
-                                        <option value="2:00-3:00">2:00 PM - 3:00 PM</option>
-                                        <option value="4:00-5:00">4:00 PM - 5:00 PM</option>
+                                    <select class="form-control" id="appointment_time" name="appointment_time" required>
+                                        <option value="09:00:00">9:00 AM</option>
+                                        <option value="09:30:00">9:30 AM</option>
+                                        <option value="10:00:00">10:00 AM</option>
+                                        <option value="10:30:00">10:30 AM</option>
+                                        <option value="11:00:00">11:00 AM</option>
+                                        <option value="11:30:00">11:30 AM</option>
+                                        <option value="13:00:00">1:00 PM</option>
+                                        <option value="13:30:00">1:30 PM</option>
+                                        <option value="14:00:00">2:00 PM</option>
+                                        <option value="14:30:00">2:30 PM</option>
+                                        <option value="16:00:00">4:00 PM</option>
+                                        <option value="16:30:00">4:30 PM</option>
                                     </select>
                                 </div>
                                 <input type="hidden" name="docid" id="docid" value="">
                                 <div class="modal-footer">
                                     <button type="submit" class="btn btn-primary">Confirm</button>
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                                 </div>
                             </form>
                         </div>
@@ -286,6 +294,7 @@
                         </div>
                         <div class="modal-footer">
                             <button id="saveNonWorkingDay" class="btn btn-primary">Save</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         </div>
                     </div>
                 </div>
@@ -295,17 +304,22 @@
 
     <script>
         $(document).ready(function () {
+            var currentDentistId = null;
+            
             $('#choose_dentist').change(function () {
-                var dentistId = $(this).val();
-                if (dentistId) {
-                    $('#docid').val(dentistId);
-                    display_events(dentistId);
+                currentDentistId = $(this).val();
+                if (currentDentistId) {
+                    $('#docid').val(currentDentistId);
+                    display_events(currentDentistId);
                 } else {
+                    $('#calendar').fullCalendar('removeEvents');
                     alert("Please select a dentist.");
                 }
             });
 
-            $('#event_entry_modal').on('click', '.btn-primary', function () {
+            // Form submission handler
+            $('#eventForm').on('submit', function(e) {
+                e.preventDefault();
                 save_event();
             });
 
@@ -313,12 +327,14 @@
             $('#cancelReason').change(function() {
                 if ($(this).val() === 'Other') {
                     $('#otherReasonGroup').show();
+                    $('#otherReason').prop('required', true);
                 } else {
                     $('#otherReasonGroup').hide();
+                    $('#otherReason').prop('required', false);
                 }
             });
 
-            // Confirm cancellation handler
+            // Confirm cancellation handler - FIXED
             $('#confirmCancel').click(function() {
                 var formData = $('#cancelForm').serialize();
                 
@@ -327,8 +343,13 @@
                     return;
                 }
                 
+                if ($('#cancelReason').val() === 'Other' && !$('#otherReason').val()) {
+                    alert('Please specify the cancellation reason');
+                    return;
+                }
+                
                 $.ajax({
-                    url: 'cancel_appointment.php',
+                    url: 'cancel_appointment.php', // Changed from cancel_appointment.php to save_event.php
                     type: 'POST',
                     data: formData,
                     dataType: 'json',
@@ -337,13 +358,16 @@
                             alert(response.msg);
                             $('#cancelModal').modal('hide');
                             $('#appointmentModal').modal('hide');
-                            $('#calendar').fullCalendar('refetchEvents');
+                            if (currentDentistId) {
+                                display_events(currentDentistId);
+                            }
                         } else {
                             alert('Error: ' + response.msg);
                         }
                     },
-                    error: function() {
-                        alert('Failed to process the request. Please try again.');
+                    error: function(xhr, status, error) {
+                        console.error("Error:", error);
+                        alert('Failed to process the request. Please check console for details.');
                     }
                 });
             });
@@ -370,7 +394,9 @@
                     success: function (res) {
                         if (res.status) {
                             alert("Non-Working Day added successfully!");
-                            $('#calendar').fullCalendar('refetchEvents');
+                            if (currentDentistId) {
+                                display_events(currentDentistId);
+                            }
                             $("#nonWorkingDayModal").modal("hide");
                         } else {
                             alert("Error: " + res.message);
@@ -417,7 +443,8 @@
 
                 $('#appointment_time').empty();
                 $.each(timeSlots, function (index, time) {
-                    var option = $("<option></option>").val(time).text(time);
+                    var displayTime = moment(time, "HH:mm:ss").format("h:mm A");
+                    var option = $("<option></option>").val(time).text(displayTime);
                     if (bookedTimes.indexOf(time) !== -1) {
                         option.attr("disabled", "disabled");
                         option.css("background-color", "#F46E34");
@@ -433,18 +460,20 @@
                 success: function (response) {
                     var result = response.data;
                     $.each(result, function (i, item) {
-                        var eventColor = (item.status === 'appointment') ? '#6BB663' : item.color;
+                        var eventColor = (item.status === 'appointment') ? '#6BB663' : 
+                                         (item.status === 'booking') ? '#F46E34' : 
+                                         (item.status === 'completed') ? '#B0B0B0' : '#3A87AD';
                         events.push({
-                            event_id: result[i].appointment_id,
-                            title: result[i].title,
-                            start: result[i].start,
-                            end: result[i].end,
+                            event_id: item.appointment_id,
+                            title: item.title,
+                            start: item.start,
+                            end: item.end,
                             color: eventColor,
-                            url: result[i].url,
-                            status: result[i].status,
+                            status: item.status,
                             procedure_name: item.procedure_name,
                             patient_name: item.patient_name,
-                            dentist_name: item.dentist_name
+                            dentist_name: item.dentist_name,
+                            time: item.time || moment(item.start).format("h:mm A")
                         });
                     });
 
@@ -471,7 +500,7 @@
                         select: function (start, end) {
                             var selectedDate = moment(start).format('YYYY-MM-DD');
                             $('#appointment_date').val(selectedDate);
-                            $('#event_name').val("Event Name");
+                            $('#event_name').val("Dental Appointment");
                             fetchBookedTimes(selectedDate);
                             $('#event_entry_modal').modal('show');
                         },
@@ -495,14 +524,16 @@
                                 $('#modalProcedureName').text(event.procedure_name || 'N/A');
                                 $('#modalPatientName').text(event.patient_name || 'N/A');
                                 $('#modalDentistName').text(event.dentist_name || 'N/A');
-                                $('#modalDate').text(event.start ? moment(event.start).format('MMMM D, YYYY') : 'N/A');
-                                $('#modalTime').text(event.start ? moment(event.start).format("h:mm A") : 'N/A');
+                                $('#modalDate').text(moment(event.start).format('MMMM D, YYYY'));
+                                $('#modalTime').text(event.time);
                                 
                                 var statusText = '';
                                 switch(event.status) {
                                     case 'appointment': statusText = 'Confirmed Appointment'; break;
                                     case 'booking': statusText = 'Booking'; break;
                                     case 'completed': statusText = 'Completed'; break;
+                                    case 'rejected': statusText = 'Rejected'; break;
+                                    case 'cancelled': statusText = 'Cancelled'; break;
                                     default: statusText = 'N/A';
                                 }
                                 $('#modalStatus').text(statusText);
@@ -539,19 +570,16 @@
         }
 
         function save_event() {
-            var event_name = $("#event_name").val();
-            var procedure = $("#procedure").val();
-            var patient_name = $("#patient_name").val();
-            var appointment_date = $("#appointment_date").val();
-            var appointment_time = $("#appointment_time").val();
-            var docid = $('#docid').val();
-
-            if (!event_name || !procedure || !appointment_date || !appointment_time || !docid) {
-                alert("Please enter all required details.");
+            var formData = $('#eventForm').serialize();
+            
+            // Validate required fields
+            if (!$('#event_name').val() || !$('#procedure').val() || !$('#patient_name').val() || 
+                !$('#appointment_date').val() || !$('#appointment_time').val() || !$('#docid').val()) {
+                alert("Please fill in all required fields.");
                 return false;
             }
 
-            var submitButton = $('.btn-primary');
+            var submitButton = $('#eventForm').find('.btn-primary');
             submitButton.prop('disabled', true);
             submitButton.text('Submitting...');
 
@@ -559,26 +587,21 @@
                 url: "save_event.php",
                 type: "POST",
                 dataType: 'json',
-                data: {
-                    event_name: event_name,
-                    procedure: procedure,
-                    patient_name: patient_name,
-                    appointment_date: appointment_date,
-                    appointment_time: appointment_time,
-                    docid: docid
-                },
+                data: formData,
                 success: function (response) {
                     $('#event_entry_modal').modal('hide');
                     if (response.status === true) {
                         alert(response.msg);
-                        $('#calendar').fullCalendar('refetchEvents');
+                        if ($('#choose_dentist').val()) {
+                            display_events($('#choose_dentist').val());
+                        }
                     } else {
                         alert(response.msg);
                     }
                 },
-                error: function () {
-                    console.log('AJAX error');
-                    alert('Error saving event');
+                error: function (xhr, status, error) {
+                    console.error("Error:", error);
+                    alert('Error saving event. Please try again.');
                 },
                 complete: function () {
                     submitButton.prop('disabled', false);
