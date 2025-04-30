@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 
-
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -26,14 +25,95 @@
             border: 3px solid #84b6e4;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+        
+        /* Notification styles */
+        .notification-container {
+            position: relative;
+            display: flex;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff4757;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+        }
+        
+        .notification-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 300px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            height: 500px;
+            margin-top: 500px;
+        }
+        
+        .notification-dropdown.show {
+            display: block;
+        }
+        
+        .notification-header {
+            padding: 12px 16px;
+            background-color: #f1f7fe;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .notification-item.unread {
+            background-color: #f1f7fe;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #777;
+        }
+        
+        .mark-all-read {
+            color: #3a86ff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .no-notifications {
+            padding: 16px;
+            text-align: center;
+            color: #777;
+        }
     </style>
 </head>
-
 
 <?php
 date_default_timezone_set('Asia/Singapore');
 session_start();
-
 
 if (isset($_SESSION["user"])) {
     if (($_SESSION["user"]) == "" or $_SESSION['usertype'] != 'p') {
@@ -45,7 +125,6 @@ if (isset($_SESSION["user"])) {
     header("location: login.php");
 }
 
-
 //import database
 include("../connection.php");
 $userrow = $database->query("select * from patient where pemail='$useremail'");
@@ -53,12 +132,16 @@ $userfetch = $userrow->fetch_assoc();
 $userid = $userfetch["pid"];
 $username = $userfetch["pname"];
 
+// Get notification count
+$unreadCount = $database->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '$userid' AND user_type = 'p' AND is_read = 0");
+$unreadCount = $unreadCount->fetch_assoc()['count'];
+
+// Get notifications
+$notifications = $database->query("SELECT * FROM notifications WHERE user_id = '$userid' AND user_type = 'p' ORDER BY created_at DESC");
 
 $patientrow = $database->query("select * from patient;");
-$doctorrow = $database->query("select * from doctor where status='active';");
 $appointmentrow = $database->query("select * from appointment where status='booking' AND pid='$userid';");
 $schedulerow = $database->query("select * from appointment where status='appointment' AND pid='$userid';");
-
 
 $today = date('Y-m-d');
 $currentMonth = date('F');
@@ -67,11 +150,9 @@ $daysInMonth = date('t');
 $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
 $currentDay = date('j');
 
-
 // sort order for announcements
 $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC';
 ?>
-
 
 <body>
     <div class="main-container">
@@ -80,7 +161,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
             </div>
-
 
             <div class="user-profile">
                 <div class="profile-image">
@@ -94,7 +174,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                     <?php echo substr($useremail, 0, 30) ?>
                 </p>
             </div>
-
 
             <div class="nav-menu">
                 <a href="dashboard.php" class="nav-item active">
@@ -127,7 +206,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                 </a>
             </div>
 
-
             <div class="log-out">
                 <a href="logout.php" class="nav-item">
                     <img src="../Media/Icon/Blue/logout.png" alt="Log Out" class="nav-icon">
@@ -135,7 +213,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                 </a>
             </div>
         </div>
-
 
         <div class="content-area">
             <!-- main content -->
@@ -151,7 +228,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                         </form>
                     </div>
 
-
                     <!-- announcements header -->
                     <div class="announcements-header">
                         <h3 class="announcements-title">Announcements</h3>
@@ -165,14 +241,12 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                 Newest
                             </a>
 
-
                             <a href="?sort=oldest<?php echo $searchTermEncoded; ?>"
                                 class="filter-btn oldest-btn <?php echo $currentSort === 'oldest' ? 'active' : 'inactive'; ?>">
                                 Oldest
                             </a>
                         </div>
                     </div>
-
 
                     <!-- announcements container -->
                     <div class="announcements">
@@ -181,7 +255,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                             // Get search term if submitted
                             $searchTerm = isset($_GET['search']) ? $_GET['search'] : '';
                             $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC';
-
 
                             // Base query
                             $query = "
@@ -194,7 +267,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                 WHERE post_admin.aemail = ''
                             ";
 
-
                             // Add search condition if term exists
                             if (!empty($searchTerm)) {
                                 $searchTerm = $database->real_escape_string($searchTerm);
@@ -206,13 +278,10 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                 ";
                             }
 
-
                             // Add sorting and limit
                             $query .= " ORDER BY created_at $sortOrder LIMIT 6";
 
-
                             $result = $database->query($query);
-
 
                             if ($result->num_rows > 0) {
                                 // Loop through the posts and display them
@@ -226,7 +295,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                         ? '../Media/Icon/SDMC Logo.png'
                                         : '../admin/uploads/' . $post['docphoto'];
 
-
                                     echo '<div class="announcement-item">';
                                     echo '<div class="announcement-header">';
                                     echo '<div class="clinic-logo"><img src="' . $photoPath . '" alt="Profile" class="announcement-photo"></div>';
@@ -238,13 +306,11 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                     echo '<div class="announcement-content">' . nl2br($shortContent) . '</div>';
                                     echo '<div class="full-content">' . nl2br($content) . '</div>';
 
-
                                     if ($isLong) {
                                         echo '<div class="announcement-footer">';
                                         echo '<button class="see-more-btn" onclick="toggleExpand(this)">See more...</button>';
                                         echo '</div>';
                                     }
-
 
                                     echo '</div>';
                                 }
@@ -256,23 +322,44 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                     </div>
                 </div>
 
-
                 <div class="right-sidebar">
                     <div class="stats-section">
                         <div class="stats-container">
-                            <!-- First row -->
-                            <a href="dentist.php" class="stat-box-link">
-                                <div class="stat-box">
-                                    <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $doctorrow->num_rows; ?></h1>
-                                        <p class="stat-label">Dentists</p>
-                                    </div>
-                                    <div class="stat-icon">
-                                        <img src="../Media/Icon/Blue/dentist.png" alt="Dentist Icon">
-                                    </div>
+                            <!-- Notification Box -->
+                            <div class="stat-box notification-container" id="notificationContainer">
+                                <div class="stat-content">
+                                    <h1 class="stat-number"><?php echo $unreadCount; ?></h1>
+                                    <p class="stat-label">Notifications</p>
                                 </div>
-                            </a>
-
+                                <div class="stat-icon">
+                                    <img src="../Media/Icon/Blue/folder.png" alt="Notifications Icon">
+                                    <?php if ($unreadCount > 0): ?>
+                                        <span class="notification-badge"><?php echo $unreadCount; ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="notification-dropdown" id="notificationDropdown">
+                                    <div class="notification-header">
+                                        <span>Notifications</span>
+                                        <span class="mark-all-read" onclick="markAllAsRead()">Mark all as read</span>
+                                    </div>
+                                    
+                                    <?php if ($notifications->num_rows > 0): ?>
+                                        <?php while ($notification = $notifications->fetch_assoc()): ?>
+                                            <div class="notification-item <?php echo $notification['is_read'] ? '' : 'unread'; ?>" 
+                                                 onclick="markAsRead(<?php echo $notification['id']; ?>, this)">
+                                                <div class="notification-title"><?php echo htmlspecialchars($notification['title']); ?></div>
+                                                <div><?php echo htmlspecialchars($notification['message']); ?></div>
+                                                <div class="notification-time">
+                                                    <?php echo date('M j, Y g:i A', strtotime($notification['created_at'])); ?>
+                                                </div>
+                                            </div>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <div class="no-notifications">No notifications</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
 
                             <!-- Second row -->
                             <a href="my_booking.php" class="stat-box-link">
@@ -286,7 +373,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                     </div>
                                 </div>
                             </a>
-
 
                             <a href="my_appointment.php" class="stat-box-link">
                                 <div class="stat-box">
@@ -308,7 +394,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                         </div>
                     </div>
 
-
                     <div class="calendar-section">
                         <!-- Dynamic Calendar -->
                         <div class="calendar-container">
@@ -329,13 +414,11 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                 <div class="calendar-day">F</div>
                                 <div class="calendar-day">S</div>
 
-
                                 <?php
                                 // Calculate the previous month's spillover days
                                 $previousMonthDays = $firstDayOfMonth - 1;
                                 $previousMonthLastDay = date('t', strtotime('last month'));
                                 $startDay = $previousMonthLastDay - $previousMonthDays + 1;
-
 
                                 // Display previous month's spillover days
                                 for ($i = 0; $i < $previousMonthDays; $i++) {
@@ -343,13 +426,11 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                     $startDay++;
                                 }
 
-
                                 // Display current month's days
                                 for ($day = 1; $day <= $daysInMonth; $day++) {
                                     $class = ($day == $currentDay) ? 'calendar-date today' : 'calendar-date';
                                     echo '<div class="' . $class . '">' . $day . '</div>';
                                 }
-
 
                                 // Calculate and display next month's spillover days
                                 $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth); // 42 = 6 rows * 7 days
@@ -360,7 +441,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                             </div>
                         </div>
                     </div>
-
 
                     <div class="upcoming-appointments">
                         <h3>Upcoming Appointments</h3>
@@ -381,7 +461,6 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                                 ORDER BY appointment.appodate ASC
                                 LIMIT 3;
                             ");
-
 
                             if ($upcomingAppointments->num_rows > 0) {
                                 while ($appointment = $upcomingAppointments->fetch_assoc()) {
@@ -408,37 +487,42 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
         </div>
     </div>
 
-
     <script>
         // Script for clear button in search
         document.querySelector('.clear-btn').addEventListener('click', function () {
             document.querySelector('input[name="search"]').value = '';
         });
-    </script>
 
-
-    <script>
         document.addEventListener('DOMContentLoaded', function () {
             const searchInput = document.getElementById('announcementSearch');
             const searchForm = document.getElementById('announcementSearchForm');
             const clearBtn = document.querySelector('.clear-btn');
-
 
             // Clear search functionality
             clearBtn.addEventListener('click', function () {
                 searchInput.value = '';
                 searchForm.submit();
             });
+            
+            // Notification dropdown toggle
+            const notificationContainer = document.getElementById('notificationContainer');
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            
+            notificationContainer.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationDropdown.classList.toggle('show');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function() {
+                notificationDropdown.classList.remove('show');
+            });
         });
-    </script>
 
-
-    <script>
         function toggleExpand(button) {
             const announcementItem = button.closest('.announcement-item');
             const content = announcementItem.querySelector('.announcement-content');
             const fullContent = announcementItem.querySelector('.full-content');
-
 
             if (content.style.display === 'none') {
                 // Collapse
@@ -452,9 +536,76 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                 button.textContent = 'See less';
             }
         }
+        
+        // Add this function to update notification count display
+function updateNotificationCount(newCount) {
+    // Update the stat number
+    const statNumber = document.querySelector('#notificationContainer .stat-number');
+    if (statNumber) {
+        statNumber.textContent = newCount;
+    }
+    
+    // Update or remove the badge
+    const badge = document.querySelector('.notification-badge');
+    if (newCount > 0) {
+        if (badge) {
+            badge.textContent = newCount;
+        } else {
+            // Create new badge if it doesn't exist
+            const notificationIcon = document.querySelector('#notificationContainer .stat-icon');
+            const newBadge = document.createElement('span');
+            newBadge.className = 'notification-badge';
+            newBadge.textContent = newCount;
+            notificationIcon.appendChild(newBadge);
+        }
+    } else {
+        if (badge) {
+            badge.remove();
+        }
+    }
+}
+
+function markAsRead(notificationId, element) {
+    fetch('mark_notification_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + notificationId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            element.classList.remove('unread');
+            
+            // Count remaining unread notifications
+            const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+            updateNotificationCount(unreadCount);
+        }
+    });
+}
+
+function markAllAsRead() {
+    fetch('mark_all_notifications_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove unread class from all notifications
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+                item.classList.remove('unread');
+            });
+            
+            // Update count to zero
+            updateNotificationCount(0);
+        }
+    });
+}
     </script>
 </body>
 
-
 </html>
-

@@ -1,3 +1,112 @@
+<?php
+// Start the session and set timezone before any output
+session_start();
+date_default_timezone_set('Asia/Singapore');
+
+// Check if user is logged in and has correct user type
+if (isset($_SESSION["user"])) {
+    if (($_SESSION["user"]) == "" or $_SESSION['usertype'] != 'p') {
+        header("location: login.php");
+        exit; // Add exit after redirect
+    } else {
+        $useremail = $_SESSION["user"];
+    }
+} else {
+    header("location: login.php");
+    exit; // Add exit after redirect
+}
+
+include("../connection.php");
+$userrow = $database->query("select * from patient where pemail='$useremail'");
+$userfetch = $userrow->fetch_assoc();
+$userid = $userfetch["pid"];
+$username = $userfetch["pname"];
+
+// Get notification data
+$unreadCount = $database->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '$userid' AND user_type = 'p' AND is_read = 0");
+$unreadCount = $unreadCount->fetch_assoc()['count'];
+
+$notifications = $database->query("SELECT * FROM notifications WHERE user_id = '$userid' AND user_type = 'p' ORDER BY created_at DESC");
+
+// Get totals for right sidebar
+$doctorrow = $database->query("select * from doctor where status='active';");
+$appointmentrow = $database->query("select * from appointment where status='booking' AND pid='$userid';");
+$schedulerow = $database->query("select * from appointment where status='appointment' AND pid='$userid';");
+
+// Pagination
+$results_per_page = 10;
+
+// Determine which page we're on
+if (isset($_GET['page'])) {
+    $page = $_GET['page'];
+} else {
+    $page = 1;
+}
+
+// Calculate the starting limit for SQL
+$start_from = ($page - 1) * $results_per_page;
+
+// Search functionality
+$search = "";
+
+// Main query with current database structure
+$sqlmain = "SELECT 
+            appointment.appoid, 
+            procedures.procedure_name, 
+            doctor.docname, 
+            appointment.appodate, 
+            appointment.appointment_time,
+            appointment.status,
+            doctor.photo
+        FROM appointment
+        INNER JOIN doctor ON appointment.docid = doctor.docid
+        INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
+        WHERE appointment.pid = '$userid' AND appointment.status = 'booking'";
+
+if ($_POST) {
+    if (!empty($_POST["appodate"])) {
+        $appodate = $_POST["appodate"];
+        $sqlmain .= " AND appointment.appodate='$appodate'";
+    }
+}
+
+if (isset($_GET['search'])) {
+    $search = $_GET['search'];
+    $sqlmain .= " AND (doctor.docname LIKE '%$search%' OR procedures.procedure_name LIKE '%$search%')";
+}
+
+$sqlmain .= " ORDER BY appointment.appodate ASC LIMIT $start_from, $results_per_page";
+$result = $database->query($sqlmain);
+
+// Count query for pagination
+$count_query = str_replace("LIMIT $start_from, $results_per_page", "", $sqlmain);
+$count_query = "SELECT COUNT(*) as total FROM (" . $count_query . ") as count_table";
+$count_result = $database->query($count_query);
+$count_row = $count_result->fetch_assoc();
+$total_pages = ceil($count_row['total'] / $results_per_page);
+
+// Calendar variables
+$today = date('Y-m-d');
+$currentMonth = date('F');
+$currentYear = date('Y');
+$daysInMonth = date('t');
+$firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
+$currentDay = date('j');
+
+// Status message handling
+$statusMessage = '';
+$messageClass = '';
+
+if (isset($_GET['status'])) {
+    if ($_GET['status'] == 'cancel_success') {
+        $statusMessage = "Booking canceled successfully.";
+        $messageClass = "success-message";
+    } elseif ($_GET['status'] == 'cancel_error') {
+        $statusMessage = "Failed to cancel the booking. Please try again.";
+        $messageClass = "error-message";
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -53,92 +162,103 @@
             background-color: #e0e0e0;
             color: #333;
         }
+        
+        /* Notification styles */
+        .notification-container {
+            position: relative;
+            display: flex;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff4757;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+        }
+        
+        .notification-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            min-width: 300px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-dropdown.show {
+            display: block;
+        }
+        
+        .notification-header {
+            padding: 12px 16px;
+            background-color: #f1f7fe;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .notification-item.unread {
+            background-color: #f1f7fe;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #777;
+        }
+        
+        .mark-all-read {
+            color: #3a86ff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .no-notifications {
+            padding: 16px;
+            text-align: center;
+            color: #777;
+        }
+        
+        .success-message {
+            color: green;
+            font-weight: bold;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin: 10px 0;
+            text-align: center;
+        }
     </style>
-    <?php
-    date_default_timezone_set('Asia/Singapore');
-    session_start();
-
-    if (isset($_SESSION["user"])) {
-        if (($_SESSION["user"]) == "" or $_SESSION['usertype'] != 'p') {
-            header("location: login.php");
-        } else {
-            $useremail = $_SESSION["user"];
-        }
-    } else {
-        header("location: login.php");
-    }
-
-    include("../connection.php");
-    $userrow = $database->query("select * from patient where pemail='$useremail'");
-    $userfetch = $userrow->fetch_assoc();
-    $userid = $userfetch["pid"];
-    $username = $userfetch["pname"];
-
-    // Get totals for right sidebar
-    $doctorrow = $database->query("select * from doctor where status='active';");
-    $appointmentrow = $database->query("select * from appointment where status='booking' AND pid='$userid';");
-    $schedulerow = $database->query("select * from appointment where status='appointment' AND pid='$userid';");
-
-    // Pagination
-    $results_per_page = 10;
-
-    // Determine which page we're on
-    if (isset($_GET['page'])) {
-        $page = $_GET['page'];
-    } else {
-        $page = 1;
-    }
-
-    // Calculate the starting limit for SQL
-    $start_from = ($page - 1) * $results_per_page;
-
-    // Search functionality
-    $search = "";
-
-    // Main query with current database structure
-    $sqlmain = "SELECT 
-                appointment.appoid, 
-                procedures.procedure_name, 
-                doctor.docname, 
-                appointment.appodate, 
-                appointment.appointment_time,
-                appointment.status,
-                doctor.photo
-            FROM appointment
-            INNER JOIN doctor ON appointment.docid = doctor.docid
-            INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
-            WHERE appointment.pid = $userid AND appointment.status = 'booking'";
-
-    if ($_POST) {
-        if (!empty($_POST["appodate"])) {
-            $appodate = $_POST["appodate"];
-            $sqlmain .= " AND appointment.appodate='$appodate'";
-        }
-    }
-
-    if (isset($_GET['search'])) {
-        $search = $_GET['search'];
-        $sqlmain .= " AND (doctor.docname LIKE '%$search%' OR procedures.procedure_name LIKE '%$search%')";
-    }
-
-    $sqlmain .= " ORDER BY appointment.appodate ASC LIMIT $start_from, $results_per_page";
-    $result = $database->query($sqlmain);
-
-    // Count query for pagination
-    $count_query = str_replace("LIMIT $start_from, $results_per_page", "", $sqlmain);
-    $count_query = "SELECT COUNT(*) as total FROM (" . $count_query . ") as count_table";
-    $count_result = $database->query($count_query);
-    $count_row = $count_result->fetch_assoc();
-    $total_pages = ceil($count_row['total'] / $results_per_page);
-
-    // Calendar variables
-    $today = date('Y-m-d');
-    $currentMonth = date('F');
-    $currentYear = date('Y');
-    $daysInMonth = date('t');
-    $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
-    $currentDay = date('j');
-    ?>
 </head>
 
 <body>
@@ -203,6 +323,11 @@
         <div class="content-area">
             <div class="content">
                 <div class="main-section">
+                    <!-- Status Message -->
+                    <?php if (!empty($statusMessage)): ?>
+                        <div class="<?php echo $messageClass; ?>"><?php echo $statusMessage; ?></div>
+                    <?php endif; ?>
+                    
                     <!-- search bar -->
                     <div class="search-container">
                         <form action="" method="GET" style="display: flex; width: 100%;">
@@ -215,7 +340,7 @@
                         </form>
                     </div>
 
-                    <!-- Replace the header section with this code -->
+                    <!-- header section -->
                     <div class="announcements-header">
                         <h3 class="announcements-title">My Bookings (<?php echo $count_row['total']; ?>)</h3>
                         <div class="announcement-filters">
@@ -232,7 +357,7 @@
                         </div>
                     </div>
 
-                    <?php if ($result->num_rows > 0): ?>
+                    <?php if ($result && $result->num_rows > 0): ?>
                         <div class="table-container">
                             <table class="table">
                                 <thead>
@@ -331,18 +456,41 @@
                 <div class="right-sidebar">
                     <div class="stats-section">
                         <div class="stats-container">
-                            <!-- First row -->
-                            <a href="dentist.php" class="stat-box-link">
-                                <div class="stat-box">
-                                    <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $doctorrow->num_rows; ?></h1>
-                                        <p class="stat-label">Dentists</p>
-                                    </div>
-                                    <div class="stat-icon">
-                                        <img src="../Media/Icon/Blue/dentist.png" alt="Dentist Icon">
-                                    </div>
+                            <!-- Notification Box -->
+                            <div class="stat-box notification-container" id="notificationContainer">
+                                <div class="stat-content">
+                                    <h1 class="stat-number"><?php echo $unreadCount; ?></h1>
+                                    <p class="stat-label">Notifications</p>
                                 </div>
-                            </a>
+                                <div class="stat-icon">
+                                    <img src="../Media/Icon/Blue/folder.png" alt="Notifications Icon">
+                                    <?php if ($unreadCount > 0): ?>
+                                        <span class="notification-badge"><?php echo $unreadCount; ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="notification-dropdown" id="notificationDropdown">
+                                    <div class="notification-header">
+                                        <span>Notifications</span>
+                                        <span class="mark-all-read" onclick="markAllAsRead()">Mark all as read</span>
+                                    </div>
+                                    
+                                    <?php if ($notifications && $notifications->num_rows > 0): ?>
+                                        <?php while ($notification = $notifications->fetch_assoc()): ?>
+                                            <div class="notification-item <?php echo $notification['is_read'] ? '' : 'unread'; ?>" 
+                                                 onclick="markAsRead(<?php echo $notification['id']; ?>, this)">
+                                                <div class="notification-title"><?php echo htmlspecialchars($notification['title']); ?></div>
+                                                <div><?php echo htmlspecialchars($notification['message']); ?></div>
+                                                <div class="notification-time">
+                                                    <?php echo date('M j, Y g:i A', strtotime($notification['created_at'])); ?>
+                                                </div>
+                                            </div>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <div class="no-notifications">No notifications</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
 
                             <!-- Second row -->
                             <a href="my_booking.php" class="stat-box-link">
@@ -445,7 +593,7 @@
                                 LIMIT 3;
                             ");
 
-                            if ($upcomingAppointments->num_rows > 0) {
+                            if ($upcomingAppointments && $upcomingAppointments->num_rows > 0) {
                                 while ($appointment = $upcomingAppointments->fetch_assoc()) {
                                     echo '<div class="appointment-item">
                                         <h4 class="appointment-type">' . htmlspecialchars($appointment['procedure_name']) . '</h4>
@@ -471,12 +619,19 @@
     </div>
 
     <?php
-    if ($_GET) {
+    if (isset($_GET['action'])) {
         $id = $_GET["id"];
         $action = $_GET["action"];
 
         if ($action == 'drop') {
             $docname = $_GET["doc"];
+
+            // Get appointment details for notification
+            $appointmentQuery = $database->query("SELECT a.*, p.pname, p.pemail 
+                                                FROM appointment a
+                                                JOIN patient p ON a.pid = p.pid
+                                                WHERE a.appoid = '$id'");
+            $appointment = $appointmentQuery->fetch_assoc();
 
             echo '
             <div id="popup1" class="overlay">
@@ -484,12 +639,11 @@
                     <center>
                         <h2>Confirm Cancellation</h2>
                         <a class="close" href="my_booking.php">&times;</a>
-                        <div class="content">
+                        <div class="content" style="height: 100px; width: 420px;">
                             Are you sure you want to cancel this booking?<br><br>
-                            Dentist: <b>' . htmlspecialchars(substr($docname, 0, 40)) . '</b><br><br>
                         </div>
                         <div style="display: flex;justify-content: center;">
-                            <a href="cancel_appointment.php?id=' . $id . '" class="non-style-link">
+                            <a href="cancel_appointment.php?id=' . $id . '&source=patient" class="non-style-link">
                                 <button class="btn-primary btn" style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;">
                                     <font class="tn-in-text">Yes, Cancel</font>
                                 </button>
@@ -529,7 +683,81 @@
                     clearSearch();
                 });
             }
+            
+            // Notification dropdown toggle
+            const notificationContainer = document.getElementById('notificationContainer');
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            
+            notificationContainer.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationDropdown.classList.toggle('show');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function() {
+                notificationDropdown.classList.remove('show');
+            });
         });
+
+        function markAsRead(notificationId, element) {
+            fetch('mark_notification_read.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'id=' + notificationId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    element.classList.remove('unread');
+                    // Update badge count
+                    const badge = document.querySelector('.notification-badge');
+                    if (badge) {
+                        const currentCount = parseInt(badge.textContent);
+                        if (currentCount > 1) {
+                            badge.textContent = currentCount - 1;
+                        } else {
+                            badge.remove();
+                        }
+                    }
+                    // Update the stat number
+                    const statNumber = document.querySelector('#notificationContainer .stat-number');
+                    if (statNumber) {
+                        const currentCount = parseInt(statNumber.textContent);
+                        statNumber.textContent = currentCount - 1;
+                    }
+                }
+            });
+        }
+        
+        function markAllAsRead() {
+            fetch('mark_all_notifications_read.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove unread class from all notifications
+                    document.querySelectorAll('.notification-item.unread').forEach(item => {
+                        item.classList.remove('unread');
+                    });
+                    // Remove badge
+                    const badge = document.querySelector('.notification-badge');
+                    if (badge) {
+                        badge.remove();
+                    }
+                    // Update the stat number
+                    const statNumber = document.querySelector('#notificationContainer .stat-number');
+                    if (statNumber) {
+                        statNumber.textContent = '0';
+                    }
+                }
+            });
+        }
     </script>
 </body>
 

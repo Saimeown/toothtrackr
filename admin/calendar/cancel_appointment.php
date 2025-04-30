@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
 
     // Fetch full appointment details with patient and doctor information
     $query = $con->prepare("
-        SELECT a.*, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
+        SELECT a.*, p.pid, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
         FROM appointment a
         JOIN patient p ON a.pid = p.pid
         JOIN doctor d ON a.docid = d.docid
@@ -36,7 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
         exit;
     }
 
-    $newStatus = ($appointment['status'] === 'booking') ? 'rejected' : 'cancelled';
+    // Determine if this is a booking or appointment
+    $isBooking = ($appointment['status'] === 'booking');
+    $newStatus = $isBooking ? 'rejected' : 'cancelled';
 
     // Insert appointment into the archive table with reason
     $archiveQuery = $con->prepare("
@@ -69,6 +71,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
         $deleteQuery->bind_param("i", $appoid);
         
         if ($deleteQuery->execute()) {
+            // Create appropriate notification for patient
+            $notificationTitle = $isBooking ? "Booking Rejected" : "Appointment Cancelled";
+            $notificationMessage = $isBooking 
+                ? "Your booking for " . $appointment['procedure_name'] . " on " . 
+                  date('M j, Y', strtotime($appointment['appodate'])) . " at " . 
+                  date('g:i A', strtotime($appointment['appointment_time'])) . 
+                  " has been rejected. Reason: " . $full_reason
+                : "Your appointment for " . $appointment['procedure_name'] . " on " . 
+                  date('M j, Y', strtotime($appointment['appodate'])) . " at " . 
+                  date('g:i A', strtotime($appointment['appointment_time'])) . 
+                  " has been cancelled. Reason: " . $full_reason;
+            
+            $notificationQuery = $con->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $appointment['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $appoid
+            );
+            $notificationQuery->execute();
+
             // Send email notifications
             $mail = new PHPMailer(true);
             
@@ -90,14 +116,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
                 
                 // Content
                 $mail->isHTML(true);
-                $mail->Subject = 'Appointment ' . ucfirst($newStatus) . ' Notification';
+                $mail->Subject = $notificationTitle;
                 $mail->Body = "
-                    <h3>Appointment " . ucfirst($newStatus) . " Notification</h3>
-                    <p>Your appointment has been $newStatus by the clinic.</p>
+                    <h3>$notificationTitle</h3>
+                    <p>Your " . ($isBooking ? 'booking' : 'appointment') . " has been $newStatus by the clinic.</p>
                     <p><strong>Patient Name:</strong> {$appointment['pname']}</p>
                     <p><strong>Dentist Name:</strong> {$appointment['docname']}</p>
-                    <p><strong>Appointment Date:</strong> " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
-                    <p><strong>Appointment Time:</strong> {$appointment['appointment_time']}</p>
+                    <p><strong>Date:</strong> " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
+                    <p><strong>Time:</strong> {$appointment['appointment_time']}</p>
                     <p><strong>Procedure:</strong> {$appointment['procedure_name']}</p>
                     <p><strong>Reason:</strong> $full_reason</p>
                     <p>Please contact the clinic if you wish to reschedule or for more information.</p>
@@ -107,19 +133,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
                 
                 echo json_encode([
                     'status' => true,
-                    'msg' => "Appointment has been $newStatus successfully. Notification sent."
+                    'msg' => ucfirst($isBooking ? 'booking' : 'appointment') . " has been $newStatus successfully. Notification sent."
                 ]);
             } catch (Exception $e) {
                 echo json_encode([
                     'status' => true,
-                    'msg' => "Appointment has been $newStatus successfully, but failed to send notification email."
+                    'msg' => ucfirst($isBooking ? 'booking' : 'appointment') . " has been $newStatus successfully, notification created, but email failed to send."
                 ]);
             }
         } else {
-            echo json_encode(['status' => false, 'msg' => 'Failed to delete the appointment.']);
+            echo json_encode(['status' => false, 'msg' => 'Failed to delete the ' . ($isBooking ? 'booking' : 'appointment') . '.']);
         }
     } else {
-        echo json_encode(['status' => false, 'msg' => 'Failed to archive the appointment.']);
+        echo json_encode(['status' => false, 'msg' => 'Failed to archive the ' . ($isBooking ? 'booking' : 'appointment') . '.']);
     }
 } else {
     echo json_encode(['status' => false, 'msg' => 'Invalid request.']);

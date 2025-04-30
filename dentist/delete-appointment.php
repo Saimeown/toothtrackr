@@ -15,20 +15,22 @@ if(($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'GET
     
     $appoid = $_REQUEST["id"];
     $reason = isset($_REQUEST["reason"]) ? $_REQUEST["reason"] : "Cancelled by dentist";
+    $useremail = $_SESSION["user"];
+    
+    // Get dentist info
+    $dentistRow = $database->query("SELECT docid, docname FROM doctor WHERE docemail='$useremail'");
+    $dentist = $dentistRow->fetch_assoc();
+    $userid = $dentist["docid"];
+    $dentistName = $dentist["docname"];
     
     // Get appointment details for email notification
     $query = $database->prepare("
-        SELECT a.*, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name 
+        SELECT a.*, p.pid, p.pname, p.pemail, pr.procedure_name 
         FROM appointment a
         JOIN patient p ON a.pid = p.pid
-        JOIN doctor d ON a.docid = d.docid
         JOIN procedures pr ON a.procedure_id = pr.procedure_id
         WHERE a.appoid = ? AND a.docid = ? AND a.status = 'appointment'
     ");
-    $useremail = $_SESSION["user"];
-    $userrow = $database->query("SELECT docid FROM doctor WHERE docemail='$useremail'");
-    $userfetch = $userrow->fetch_assoc();
-    $userid = $userfetch["docid"];
     
     $query->bind_param("ii", $appoid, $userid);
     $query->execute();
@@ -73,6 +75,25 @@ if(($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'GET
         $deleteQuery->bind_param("i", $appoid);
         
         if($deleteQuery->execute()) {
+            // Create notification for patient
+            $notificationTitle = "Appointment Cancelled";
+            $notificationMessage = "Your appointment for " . $appointment['procedure_name'] . " on " . 
+                                 date('M j, Y', strtotime($appointment['appodate'])) . " at " . 
+                                 date('g:i A', strtotime($appointment['appointment_time'])) . 
+                                 " has been cancelled by Dr. " . $dentistName . ". Reason: " . $reason;
+            
+            $notificationQuery = $database->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $appointment['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $appoid
+            );
+            $notificationQuery->execute();
+            
             // Send notification email
             $mail = new PHPMailer(true);
             try {
@@ -88,7 +109,7 @@ if(($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'GET
                 // Recipients
                 $mail->setFrom('songcodent@gmail.com', 'ToothTrackr');
                 $mail->addAddress($appointment['pemail'], $appointment['pname']);
-                $mail->addCC($appointment['docemail'], $appointment['docname']);
+                $mail->addCC($useremail, $dentistName);
                 $mail->addCC('songcodent@gmail.com'); // CC to admin
                 
                 // Content
@@ -100,7 +121,7 @@ if(($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'GET
                     
                     <h4>Cancelled Appointment Details:</h4>
                     <p><strong>Patient:</strong> {$appointment['pname']}</p>
-                    <p><strong>Dentist:</strong> Dr. {$appointment['docname']}</p>
+                    <p><strong>Dentist:</strong> Dr. {$dentistName}</p>
                     <p><strong>Date:</strong> " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
                     <p><strong>Time:</strong> {$appointment['appointment_time']}</p>
                     <p><strong>Procedure:</strong> {$appointment['procedure_name']}</p>

@@ -35,6 +35,14 @@
     $userid = $userfetch["pid"];
     $username = $userfetch["pname"];
 
+    // Get notification count
+    $unreadCount = $database->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '$userid' AND user_type = 'p' AND is_read = 0");
+    $unreadCount = $unreadCount->fetch_assoc()['count'];
+
+    // Get notifications
+    $notifications = $database->query("SELECT * FROM notifications WHERE user_id = '$userid' AND user_type = 'p' ORDER BY created_at DESC");
+
+
     // Get totals for right sidebar
     $doctorrow = $database->query("select * from doctor where status='active';");
     $appointmentrow = $database->query("select * from appointment where status='booking' AND pid='$userid';");
@@ -83,6 +91,90 @@
     $currentDay = date('j');
 
     ?>
+    <style>
+        /* Notification styles */
+        .notification-container {
+            position: relative;
+            display: flex;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff4757;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+        }
+        
+        .notification-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 300px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            height: 500px;
+            margin-top: 500px;
+        }
+        
+        .notification-dropdown.show {
+            display: block;
+        }
+        
+        .notification-header {
+            padding: 12px 16px;
+            background-color: #f1f7fe;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .notification-item.unread {
+            background-color: #f1f7fe;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #777;
+        }
+        
+        .mark-all-read {
+            color: #3a86ff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .no-notifications {
+            padding: 16px;
+            text-align: center;
+            color: #777;
+        }
+    </style>
 </head>
 
 <body>
@@ -252,18 +344,41 @@
                 <div class="right-sidebar">
                     <div class="stats-section">
                         <div class="stats-container">
-                            <!-- First row -->
-                            <a href="dentist.php" class="stat-box-link">
-                                <div class="stat-box">
-                                    <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $doctorrow->num_rows; ?></h1>
-                                        <p class="stat-label">Dentists</p>
-                                    </div>
-                                    <div class="stat-icon">
-                                        <img src="../Media/Icon/Blue/dentist.png" alt="Dentist Icon">
-                                    </div>
+                            <!-- Notification Box -->
+                            <div class="stat-box notification-container" id="notificationContainer">
+                                <div class="stat-content">
+                                    <h1 class="stat-number"><?php echo $unreadCount; ?></h1>
+                                    <p class="stat-label">Notifications</p>
                                 </div>
-                            </a>
+                                <div class="stat-icon">
+                                    <img src="../Media/Icon/Blue/folder.png" alt="Notifications Icon">
+                                    <?php if ($unreadCount > 0): ?>
+                                        <span class="notification-badge"><?php echo $unreadCount; ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="notification-dropdown" id="notificationDropdown">
+                                    <div class="notification-header">
+                                        <span>Notifications</span>
+                                        <span class="mark-all-read" onclick="markAllAsRead()">Mark all as read</span>
+                                    </div>
+                                    
+                                    <?php if ($notifications->num_rows > 0): ?>
+                                        <?php while ($notification = $notifications->fetch_assoc()): ?>
+                                            <div class="notification-item <?php echo $notification['is_read'] ? '' : 'unread'; ?>" 
+                                                 onclick="markAsRead(<?php echo $notification['id']; ?>, this)">
+                                                <div class="notification-title"><?php echo htmlspecialchars($notification['title']); ?></div>
+                                                <div><?php echo htmlspecialchars($notification['message']); ?></div>
+                                                <div class="notification-time">
+                                                    <?php echo date('M j, Y g:i A', strtotime($notification['created_at'])); ?>
+                                                </div>
+                                            </div>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <div class="no-notifications">No notifications</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
 
                             <!-- Second row -->
                             <a href="my_booking.php" class="stat-box-link">
@@ -371,9 +486,9 @@
                                     echo '<div class="appointment-item">
                                         <h4 class="appointment-type">' . htmlspecialchars($appointment['procedure_name']) . '</h4>
                                         <p class="appointment-date">' .
-                                        htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
-                                        ' • ' .
-                                        htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                            ' • ' .
+                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
                                         '</p>
                                     </div>';
                                 }
@@ -407,7 +522,107 @@
                     clearSearch();
                 });
             }
+             // Notification dropdown toggle
+             const notificationContainer = document.getElementById('notificationContainer');
+            const notificationDropdown = document.getElementById('notificationDropdown');
+            
+            notificationContainer.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationDropdown.classList.toggle('show');
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function() {
+                notificationDropdown.classList.remove('show');
+            });
         });
+
+        function toggleExpand(button) {
+            const announcementItem = button.closest('.announcement-item');
+            const content = announcementItem.querySelector('.announcement-content');
+            const fullContent = announcementItem.querySelector('.full-content');
+
+            if (content.style.display === 'none') {
+                // Collapse
+                content.style.display = 'block';
+                fullContent.style.display = 'none';
+                button.textContent = 'See more...';
+            } else {
+                // Expand
+                content.style.display = 'none';
+                fullContent.style.display = 'block';
+                button.textContent = 'See less';
+            }
+        }
+        
+        // Add this function to update notification count display
+function updateNotificationCount(newCount) {
+    // Update the stat number
+    const statNumber = document.querySelector('#notificationContainer .stat-number');
+    if (statNumber) {
+        statNumber.textContent = newCount;
+    }
+    
+    // Update or remove the badge
+    const badge = document.querySelector('.notification-badge');
+    if (newCount > 0) {
+        if (badge) {
+            badge.textContent = newCount;
+        } else {
+            // Create new badge if it doesn't exist
+            const notificationIcon = document.querySelector('#notificationContainer .stat-icon');
+            const newBadge = document.createElement('span');
+            newBadge.className = 'notification-badge';
+            newBadge.textContent = newCount;
+            notificationIcon.appendChild(newBadge);
+        }
+    } else {
+        if (badge) {
+            badge.remove();
+        }
+    }
+}
+
+function markAsRead(notificationId, element) {
+    fetch('mark_notification_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + notificationId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            element.classList.remove('unread');
+            
+            // Count remaining unread notifications
+            const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+            updateNotificationCount(unreadCount);
+        }
+    });
+}
+
+function markAllAsRead() {
+    fetch('mark_all_notifications_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove unread class from all notifications
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+                item.classList.remove('unread');
+            });
+            
+            // Update count to zero
+            updateNotificationCount(0);
+        }
+    });
+}
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {

@@ -19,6 +19,107 @@
     <link rel="stylesheet" href="../../css/dashboard.css">
     <title>Calendar - ToothTrackr</title>
     <link rel="icon" href="../../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
+    <style>
+        /* Notification styles */
+        .notification-container {
+            position: relative;
+            display: flex;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff4757;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+        }
+        
+        .notification-dropdown {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 300px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            height: 500px;
+            margin-top: 500px;
+        }
+        
+        .notification-dropdown.show {
+            display: block;
+        }
+        
+        .notification-header {
+            padding: 12px 16px;
+            background-color: #f1f7fe;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .notification-item.unread {
+            background-color: #f1f7fe;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #777;
+        }
+        
+        .mark-all-read {
+            color: #3a86ff;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .no-notifications {
+            padding: 16px;
+            text-align: center;
+            color: #777;
+        }
+        .select-dentist-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            background-color: #f9f9f9;
+            border: 1px dashed #ccc;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .select-dentist-message p {
+            font-size: 18px;
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
 </head>
 
 <body>
@@ -41,6 +142,13 @@
     $userfetch = $userrow->fetch_assoc();
     $userid = $userfetch["pid"];
     $username = $userfetch["pname"];
+
+    // Get notification count
+    $unreadCount = $database->query("SELECT COUNT(*) as count FROM notifications WHERE user_id = '$userid' AND user_type = 'p' AND is_read = 0");
+    $unreadCount = $unreadCount->fetch_assoc()['count'];
+
+    // Get notifications
+    $notifications = $database->query("SELECT * FROM notifications WHERE user_id = '$userid' AND user_type = 'p' ORDER BY created_at DESC");
 
     $procedures = $database->query("SELECT * FROM procedures");
     $procedure_options = '';
@@ -235,18 +343,43 @@
                 <div class="right-sidebar">
                     <div class="stats-section">
                         <div class="stats-container">
-                            <a href="../dentist.php" class="stat-box-link">
-                                <div class="stat-box">
-                                    <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $doctorrow->num_rows; ?></h1>
-                                        <p class="stat-label">Dentists</p>
-                                    </div>
-                                    <div class="stat-icon">
-                                        <img src="../../Media/Icon/Blue/dentist.png" alt="Dentist Icon">
-                                    </div>
+                            <!-- Notification Box -->
+                            <div class="stat-box notification-container" id="notificationContainer">
+                                <div class="stat-content">
+                                    <h1 class="stat-number"><?php echo $unreadCount; ?></h1>
+                                    <p class="stat-label">Notifications</p>
                                 </div>
-                            </a>
+                                <div class="stat-icon">
+                                    <img src="../../Media/Icon/Blue/folder.png" alt="Notifications Icon">
+                                    <?php if ($unreadCount > 0): ?>
+                                        <span class="notification-badge"><?php echo $unreadCount; ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="notification-dropdown" id="notificationDropdown">
+                                    <div class="notification-header">
+                                        <span>Notifications</span>
+                                        <span class="mark-all-read" onclick="markAllAsRead()">Mark all as read</span>
+                                    </div>
+                                    
+                                    <?php if ($notifications->num_rows > 0): ?>
+                                        <?php while ($notification = $notifications->fetch_assoc()): ?>
+                                            <div class="notification-item <?php echo $notification['is_read'] ? '' : 'unread'; ?>" 
+                                                 onclick="markAsRead(<?php echo $notification['id']; ?>, this)">
+                                                <div class="notification-title"><?php echo htmlspecialchars($notification['title']); ?></div>
+                                                <div><?php echo htmlspecialchars($notification['message']); ?></div>
+                                                <div class="notification-time">
+                                                    <?php echo date('M j, Y g:i A', strtotime($notification['created_at'])); ?>
+                                                </div>
+                                            </div>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <div class="no-notifications">No notifications</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
 
+                            <!-- Second row -->
                             <a href="../my_booking.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
@@ -280,31 +413,49 @@
                     </div>
 
                     <div class="calendar-section">
-                        <div class="color-guide-container">
+                        <!-- Dynamic Calendar -->
+                        <div class="calendar-container">
                             <div class="calendar-header">
-                                <h3 class="color-guide-title">Color guide</h3>
+                                <h3 class="calendar-month">
+                                    <?php
+                                    // Get current month name dynamically
+                                    echo strtoupper(date('F', strtotime('this month')));
+                                    ?>
+                                </h3>
                             </div>
-                            <div class="color-legend">
-                                <div class="color-item">
-                                    <div class="color-circle" style="background-color: #F9C74F;"></div>
-                                    <div class="color-label">Booking</div>
-                                </div>
-                                <div class="color-item">
-                                    <div class="color-circle" style="background-color: #90EE90;"></div>
-                                    <div class="color-label">Appointment</div>
-                                </div>
-                                <div class="color-item">
-                                    <div class="color-circle" style="background-color: #F94144;"></div>
-                                    <div class="color-label">No Service</div>
-                                </div>
-                                <div class="color-item">
-                                    <div class="color-circle" style="background-color: #F9A15D;"></div>
-                                    <div class="color-label">Timeslot Taken</div>
-                                </div>
-                                <div class="color-item">
-                                    <div class="color-circle" style="background-color: #BBBBBB;"></div>
-                                    <div class="color-label">Completed</div>
-                                </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day">S</div>
+                                <div class="calendar-day">M</div>
+                                <div class="calendar-day">T</div>
+                                <div class="calendar-day">W</div>
+                                <div class="calendar-day">T</div>
+                                <div class="calendar-day">F</div>
+                                <div class="calendar-day">S</div>
+
+                                <?php
+                                // Calculate the previous month's spillover days
+                                $previousMonthDays = $firstDayOfMonth - 1;
+                                $previousMonthLastDay = date('t', strtotime('last month'));
+                                $startDay = $previousMonthLastDay - $previousMonthDays + 1;
+
+                                // Display previous month's spillover days
+                                for ($i = 0; $i < $previousMonthDays; $i++) {
+                                    echo '<div class="calendar-date other-month">' . $startDay . '</div>';
+                                    $startDay++;
+                                }
+
+                                // Display current month's days
+                                for ($day = 1; $day <= $daysInMonth; $day++) {
+                                    $class = ($day == $currentDay) ? 'calendar-date today' : 'calendar-date';
+                                    echo '<div class="' . $class . '">' . $day . '</div>';
+                                }
+
+                                // Calculate and display next month's spillover days
+                                $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth); // 42 = 6 rows * 7 days
+                                for ($i = 1; $i <= $nextMonthDays; $i++) {
+                                    echo '<div class="calendar-date other-month">' . $i . '</div>';
+                                }
+                                ?>
                             </div>
                         </div>
                     </div>
@@ -334,16 +485,16 @@
                                     echo '<div class="appointment-item">
                                         <h4 class="appointment-type">' . htmlspecialchars($appointment['procedure_name']) . '</h4>
                                         <p class="appointment-date">' .
-                                        htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
-                                        ' • ' .
-                                        htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                            ' • ' .
+                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
                                         '</p>
                                     </div>';
                                 }
                             } else {
                                 echo '<div class="no-appointments">
                                     <p>No upcoming appointments scheduled</p>
-                                    <a href="calendar/calendar.php" class="schedule-btn">Schedule an appointment</a>
+                                    <a href="calendar.php" class="schedule-btn">Schedule an appointment</a>
                                 </div>';
                             }
                             ?>
@@ -354,21 +505,21 @@
 
             <script>
                 $(document).ready(function () {
-                    // Initialize with the first dentist by default if one exists
-                    var initialDentistId = $('#choose_dentist option:not(:first)').first().val();
-                    if (initialDentistId) {
-                        $('#docid').val(initialDentistId);
-                        display_events(initialDentistId);
-                    }
-
+                    // Don't initialize calendar by default
+                    // Instead, show a message prompting to select a dentist
+                    $('#calendar').html('<div class="select-dentist-message"><p>Please select a dentist to view available appointment slots.</p></div>');
+                    
                     // Event listener for selecting a dentist
                     $('#choose_dentist').change(function () {
                         var dentistId = $(this).val();
                         if (dentistId) {
                             $('#docid').val(dentistId);
+                            // Clear the message and initialize calendar
+                            $('#calendar').html('');
                             display_events(dentistId);
                         } else {
-                            alert("Please select a dentist.");
+                            // If "Select a Dentist" is chosen, show message again
+                            $('#calendar').html('<div class="select-dentist-message"><p>Please select a dentist to view available appointment slots.</p></div>');
                         }
                     });
 
@@ -520,7 +671,7 @@
                                             }
                                         });
 
-                                        $('#cancel-appointment').off('click').on('click', function () {
+                                        $('#cancel-appointment').off('click').on('click', function() {
                                             var confirmMessage = (event.status === 'booking')
                                                 ? "Are you sure you want to cancel this booking?"
                                                 : "Are you sure you want to cancel this appointment?";
@@ -530,15 +681,27 @@
                                                     url: 'cancel_appointment.php',
                                                     type: 'POST',
                                                     data: { appoid: event.event_id },
+                                                    dataType: 'json',
                                                     success: function (response) {
-                                                        let res = JSON.parse(response);
-                                                        if (res.status) {
+                                                        if (response && response.status) {
                                                             alert(event.status === 'booking'
                                                                 ? "Booking cancelled successfully."
                                                                 : "Appointment cancelled successfully.");
+                                                            // Close the modal first
+                                                            $('#appointmentModal').modal('hide');
+                                                            // Then reload the page
                                                             location.reload();
                                                         } else {
-                                                            alert("Error: " + res.msg);
+                                                            alert("Error: " + (response.msg || 'Unknown error occurred'));
+                                                        }
+                                                    },
+                                                    error: function(xhr, status, error) {
+                                                        try {
+                                                            // Try to parse response if it's JSON
+                                                            var response = JSON.parse(xhr.responseText);
+                                                            alert("Error: " + (response.msg || error));
+                                                        } catch (e) {
+                                                            alert("Error: " + error);
                                                         }
                                                     }
                                                 });
@@ -630,12 +793,161 @@
                     }
                 }
 
+                // Add this function to update notification count display
+                function updateNotificationCount(newCount) {
+                    // Update the stat number
+                    const statNumber = document.querySelector('#notificationContainer .stat-number');
+                    if (statNumber) {
+                        statNumber.textContent = newCount;
+                    }
+                    
+                    // Update or remove the badge
+                    const badge = document.querySelector('.notification-badge');
+                    if (newCount > 0) {
+                        if (badge) {
+                            badge.textContent = newCount;
+                        } else {
+                            // Create new badge if it doesn't exist
+                            const notificationIcon = document.querySelector('#notificationContainer .stat-icon');
+                            const newBadge = document.createElement('span');
+                            newBadge.className = 'notification-badge';
+                            newBadge.textContent = newCount;
+                            notificationIcon.appendChild(newBadge);
+                        }
+                    } else {
+                        if (badge) {
+                            badge.remove();
+                        }
+                    }
+                }
+
+                function markAsRead(notificationId, element) {
+                    $.ajax({
+                        url: '../mark_notification_read.php',
+                        method: 'POST',
+                        data: { id: notificationId },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                element.classList.remove('unread');
+                                
+                                // Count remaining unread notifications
+                                const unreadCount = document.querySelectorAll('.notification-item.unread').length;
+                                updateNotificationCount(unreadCount);
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error("Error marking notification as read:", xhr.responseText);
+                        }
+                    });
+                }
+
+                function markAllAsRead() {
+                    $.ajax({
+                        url: '../mark_all_notifications_read.php',
+                        method: 'POST',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                // Remove unread class from all notifications
+                                document.querySelectorAll('.notification-item.unread').forEach(item => {
+                                    item.classList.remove('unread');
+                                });
+                                
+                                // Update count to zero
+                                updateNotificationCount(0);
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error("Error marking all notifications as read:", xhr.responseText);
+                        }
+                    });
+                }
+
                 document.addEventListener('DOMContentLoaded', function () {
                     var firstOption = document.querySelector('#procedure option');
                     if (firstOption) {
                         showProcedureDescription(document.getElementById('procedure'));
                     }
                     $('[data-toggle="tooltip"]').tooltip();
+
+                    // Notification dropdown toggle
+                    const notificationContainer = document.getElementById('notificationContainer');
+                    const notificationDropdown = document.getElementById('notificationDropdown');
+
+                    if (notificationContainer && notificationDropdown) {
+                        notificationContainer.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            notificationDropdown.classList.toggle('show');
+                        });
+                        
+                        // Close dropdown when
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+        notificationDropdown.classList.remove('show');
+    });
+}
+
+function markAsRead(notificationId, element) {
+    $.ajax({
+        url: 'mark_notification_read.php',
+        method: 'POST',
+        data: { id: notificationId },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                element.classList.remove('unread');
+                // Update badge count
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    const currentCount = parseInt(badge.textContent);
+                    if (currentCount > 1) {
+                        badge.textContent = currentCount - 1;
+                    } else {
+                        badge.remove();
+                    }
+                }
+                // Update the stat number
+                const statNumber = document.querySelector('#notificationContainer .stat-number');
+                if (statNumber) {
+                    statNumber.textContent = parseInt(statNumber.textContent) - 1;
+                }
+            }
+        },
+        error: function(xhr) {
+            console.error("Error marking notification as read:", xhr.responseText);
+        }
+    });
+}
+function markAllAsRead() {
+    $.ajax({
+        url: 'mark_all_notifications_read.php',
+        method: 'POST',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                // Remove unread class from all notifications
+                document.querySelectorAll('.notification-item.unread').forEach(item => {
+                    item.classList.remove('unread');
+                });
+                // Remove badge
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.remove();
+                }
+                // Update the stat number
+                const statNumber = document.querySelector('#notificationContainer .stat-number');
+                if (statNumber) {
+                    statNumber.textContent = '0';
+                }
+            }
+        },
+        error: function(xhr) {
+            console.error("Error marking all notifications as read:", xhr.responseText);
+        }
+    });
+}
                 });
             </script>
         </div>

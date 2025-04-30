@@ -51,9 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_name'])) {
     if ($query->execute()) {
         $appoid = $con->insert_id;
         
-        // Fetch details for email notification
+        // Fetch details for notification and email
         $detailsQuery = $con->prepare("
-            SELECT p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
+            SELECT p.pid, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
             FROM appointment a
             JOIN patient p ON a.pid = p.pid
             JOIN doctor d ON a.docid = d.docid
@@ -76,6 +76,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_name'])) {
         // Format the date for display
         $formattedDate = date('F j, Y', strtotime($appointment_date));
         
+        // Create notification for patient
+        $notificationTitle = "New Appointment Confirmed";
+        $notificationMessage = "Your appointment for " . $appointment['procedure_name'] . " with Dr. " . 
+                             $appointment['docname'] . " on " . $formattedDate . " at " . 
+                             $appointment_time . " has been confirmed.";
+        
+        $notificationQuery = $con->prepare("
+            INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+            VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+        ");
+        $notificationQuery->bind_param("issi", 
+            $appointment['pid'], 
+            $notificationTitle, 
+            $notificationMessage, 
+            $appoid
+        );
+        $notificationQuery->execute();
+
         // Send confirmation email
         $mail = new PHPMailer(true);
         try {
@@ -117,13 +135,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_name'])) {
             $mail->send();
             echo json_encode([
                 'status' => true, 
-                'msg' => 'Appointment created successfully. Confirmation sent to patient and dentist.'
+                'msg' => 'Appointment created successfully. Notification and confirmation sent to patient.'
             ]);
         } catch (Exception $e) {
             error_log("Mailer Error: " . $e->getMessage());
             echo json_encode([
                 'status' => true, 
-                'msg' => 'Appointment created but failed to send confirmation email.'
+                'msg' => 'Appointment created successfully. Notification created but email failed to send.'
             ]);
         }
     } else {
@@ -149,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
 
     // Fetch full appointment details
     $query = $con->prepare("
-        SELECT a.*, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
+        SELECT a.*, p.pid, p.pname, p.pemail, d.docname, d.docemail, pr.procedure_name
         FROM appointment a
         JOIN patient p ON a.pid = p.pid
         JOIN doctor d ON a.docid = d.docid
@@ -176,11 +194,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
     
-    // Convert time format if needed (e.g., "9:00-10:00" to "09:00:00")
+    // Convert time format if needed
     $time_parts = explode('-', $appointment['appointment_time']);
     $start_time = trim($time_parts[0]) . ':00';
-    if (strlen($start_time) === 7) { // If format is "H:MM:SS"
-        $start_time = '0' . $start_time; // Add leading zero
+    if (strlen($start_time) === 7) {
+        $start_time = '0' . $start_time;
     }
 
     $archiveQuery->bind_param(
@@ -202,6 +220,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
         $deleteQuery->bind_param("i", $appoid);
         
         if ($deleteQuery->execute()) {
+            // Create notification for patient
+            $notificationTitle = ($newStatus === 'rejected') ? "Booking Rejected" : "Appointment Cancelled";
+            $notificationMessage = ($newStatus === 'rejected') 
+                ? "Your booking for " . $appointment['procedure_name'] . " on " . 
+                  date('M j, Y', strtotime($appointment['appodate'])) . " at " . 
+                  date('g:i A', strtotime($appointment['appointment_time'])) . 
+                  " has been rejected. Reason: " . $full_reason
+                : "Your appointment for " . $appointment['procedure_name'] . " on " . 
+                  date('M j, Y', strtotime($appointment['appodate'])) . " at " . 
+                  date('g:i A', strtotime($appointment['appointment_time'])) . 
+                  " has been cancelled. Reason: " . $full_reason;
+            
+            $notificationQuery = $con->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $appointment['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $appoid
+            );
+            $notificationQuery->execute();
+
             // Send cancellation email
             $mail = new PHPMailer(true);
             try {
@@ -241,13 +283,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
                 $mail->send();
                 echo json_encode([
                     'status' => true,
-                    'msg' => "Appointment has been $newStatus successfully. Notification sent."
+                    'msg' => "Appointment has been $newStatus successfully. Notification sent to patient."
                 ]);
             } catch (Exception $e) {
                 error_log("Mailer Error: " . $e->getMessage());
                 echo json_encode([
                     'status' => true,
-                    'msg' => "Appointment has been $newStatus, but failed to send notification email."
+                    'msg' => "Appointment has been $newStatus successfully. Notification created but email failed to send."
                 ]);
             }
         } else {

@@ -1,64 +1,184 @@
 <?php
-require 'database_connection.php';
+// Ensure we return JSON
+header('Content-Type: application/json');
 
-session_start();
-if (!isset($_SESSION['user'])) {
-    echo json_encode(['status' => false, 'msg' => 'User not logged in.']);
-    exit;
-}
+// Debugging - uncomment if needed
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appoid'])) {
-    $appoid = intval($_POST['appoid']); // Ensure it's an integer
+require '../../connection.php';
+require '../../vendor/autoload.php';
 
-    // Fetch full appointment details
-    $query = $con->prepare("SELECT * FROM appointment WHERE appoid = ?");
-    $query->bind_param("i", $appoid);
-    $query->execute();
-    $result = $query->get_result();
-    $appointment = $result->fetch_assoc();
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-    if (!$appointment) {
-        echo json_encode(['status' => false, 'msg' => 'Appointment not found.']);
-        exit;
+// Initialize response array
+$response = ['status' => false, 'msg' => 'Initialization failed'];
+
+try {
+    session_start();
+    if (!isset($_SESSION['user'])) {
+        throw new Exception('User not logged in');
     }
 
-    $newStatus = 'cancelled';
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['appoid'])) {
+        throw new Exception('Invalid request method or missing parameters');
+    }
 
-    // Insert appointment into the archive table
-    $appodate = $appointment['appodate'] !== null ? date('Y-m-d', strtotime($appointment['appodate'])) : null;
-    $archiveQuery = $con->prepare("
-        INSERT INTO appointment_archive (appoid, pid, docid, apponum, scheduleid, appodate, appointment_time, procedure_id, event_name, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    $appoid = (int)$_POST['appoid'];
+    if ($appoid <= 0) {
+        throw new Exception('Invalid appointment ID');
+    }
+
+    // Get appointment details with all related data
+    $stmt = $database->prepare("
+        SELECT a.*, d.docid, d.docname, d.docemail, 
+               p.pid, p.pname, p.pemail,
+               pr.procedure_id, pr.procedure_name
+        FROM appointment a
+        JOIN doctor d ON a.docid = d.docid
+        JOIN patient p ON a.pid = p.pid
+        JOIN procedures pr ON a.procedure_id = pr.procedure_id
+        WHERE a.appoid = ?
     ");
-    $archiveQuery->bind_param(
-        "iiisisssss", // Change "iiisiissss" to "iiisisssss" (the 6th parameter is now 's' for the date)
-        $appointment['appoid'],
-        $appointment['pid'],
-        $appointment['docid'],
-        $appointment['apponum'],
-        $appointment['scheduleid'],
-        $appodate, // Use the formatted appodate
-        $appointment['appointment_time'],
-        $appointment['procedure_id'],
-        $appointment['event_name'],
-        $newStatus
-    );
+    $stmt->bind_param("i", $appoid);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
-
-    if ($archiveQuery->execute()) {
-        // Now delete the original appointment
-        $deleteQuery = $con->prepare("DELETE FROM appointment WHERE appoid = ?");
-        $deleteQuery->bind_param("i", $appoid);
-        
-        if ($deleteQuery->execute()) {
-            echo json_encode(['status' => true, 'msg' => "Appointment moved to archive and deleted successfully."]);
-        } else {
-            echo json_encode(['status' => false, 'msg' => 'Failed to delete the appointment.']);
-        }
-    } else {
-        echo json_encode(['status' => false, 'msg' => 'Failed to archive the appointment.']);
+    if ($result->num_rows === 0) {
+        throw new Exception('Appointment not found');
     }
-} else {
-    echo json_encode(['status' => false, 'msg' => 'Invalid request.']);
+
+    $appointment = $result->fetch_assoc();
+    $recordType = ($appointment['status'] === 'booking') ? 'booking' : 'appointment';
+    $reason = "Cancelled by patient";
+    $status = 'cancelled';
+
+    // Start transaction
+    $database->begin_transaction();
+
+    // Archive the appointment - using SELECT INTO approach to avoid binding issues
+    $archiveStmt = $database->prepare("
+        INSERT INTO appointment_archive 
+        (appoid, pid, docid, apponum, scheduleid, appodate, appointment_time, 
+         procedure_id, event_name, status, cancel_reason, archived_at)
+        SELECT 
+            appoid, pid, docid, apponum, scheduleid, appodate, appointment_time,
+            procedure_id, event_name, ?, ?, NOW()
+        FROM appointment 
+        WHERE appoid = ?
+    ");
+    $archiveStmt->bind_param("ssi", $status, $reason, $appoid);
+    $archiveStmt->execute();
+
+    // Delete from appointments
+    $deleteStmt = $database->prepare("DELETE FROM appointment WHERE appoid = ?");
+    $deleteStmt->bind_param("i", $appoid);
+    $deleteStmt->execute();
+
+    // Create notifications
+    $notificationTitle = ucfirst($recordType) . " Cancelled";
+    $notificationMessage = "Your $recordType for {$appointment['procedure_name']} on " . 
+                         date('M j, Y', strtotime($appointment['appodate'])) . " at " .
+                         date('g:i A', strtotime($appointment['appointment_time'])) . 
+                         " has been cancelled. Reason: $reason";
+
+    // For patient
+    $notifStmt = $database->prepare("
+        INSERT INTO notifications 
+        (user_id, user_type, title, message, related_id, related_type) 
+        VALUES (?, 'p', ?, ?, ?, ?)
+    ");
+    $notifStmt->bind_param(
+        "issis",
+        $appointment['pid'],
+        $notificationTitle,
+        $notificationMessage,
+        $appoid,
+        $recordType
+    );
+    $notifStmt->execute();
+
+    // For dentist - need to prepare again or reset parameters
+    $notifStmt2 = $database->prepare("
+        INSERT INTO notifications 
+        (user_id, user_type, title, message, related_id, related_type) 
+        VALUES (?, 'd', ?, ?, ?, ?)
+    ");
+    $notifStmt2->bind_param(
+        "issis",
+        $appointment['docid'],
+        $notificationTitle,
+        $notificationMessage,
+        $appoid,
+        $recordType
+    );
+    $notifStmt2->execute();
+
+    // Commit transaction
+    $database->commit();
+
+    // Send emails (try-catch to prevent email failure from affecting cancellation)
+    $emailSuccess = false;
+    try {
+        $mail = new PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = 'songcodent@gmail.com';
+        $mail->Password = 'gzdr afos onqq ppnv';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+        
+        // To dentist
+        $mail->setFrom('songcodent@gmail.com', 'ToothTrackr');
+        $mail->addAddress($appointment['docemail'], $appointment['docname']);
+        $mail->isHTML(true);
+        $mail->Subject = "$recordType Cancellation Notification";
+        $mail->Body = "<h3>$recordType Cancelled</h3>
+            <p>Patient: {$appointment['pname']}</p>
+            <p>Date: " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
+            <p>Time: " . date('g:i A', strtotime($appointment['appointment_time'])) . "</p>
+            <p>Procedure: {$appointment['procedure_name']}</p>";
+        $mail->send();
+        
+        // To patient
+        $mail->clearAddresses();
+        $mail->addAddress($appointment['pemail'], $appointment['pname']);
+        $mail->Subject = "Your $recordType Cancellation";
+        $mail->Body = "<h3>Your $recordType Has Been Cancelled</h3>
+            <p>Date: " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
+            <p>Time: " . date('g:i A', strtotime($appointment['appointment_time'])) . "</p>
+            <p>Procedure: {$appointment['procedure_name']}</p>";
+        $mail->send();
+        
+        $emailSuccess = true;
+    } catch (Exception $e) {
+        $emailSuccess = false;
+        // Log email error if needed
+        error_log("Email error: " . $e->getMessage());
+    }
+
+    $response = [
+        'status' => true,
+        'msg' => "$recordType cancelled successfully",
+        'email_sent' => $emailSuccess
+    ];
+
+} catch (Exception $e) {
+    // Rollback on error
+    if (isset($database) && $database instanceof mysqli && $database->thread_id) {
+        $database->rollback();
+    }
+    $response = [
+        'status' => false,
+        'msg' => 'Error: ' . $e->getMessage(),
+        'error' => $e->getMessage()
+    ];
+    error_log("Cancellation error: " . $e->getMessage());
 }
+
+// Ensure no output before this
+echo json_encode($response);
+exit;
 ?>

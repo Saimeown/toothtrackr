@@ -70,51 +70,138 @@
 </head>
 
 <body>
-    <?php
-    session_start();
+<?php
+session_start();
 
-    if (!isset($_SESSION["user"]) || $_SESSION['usertype'] != 'd') {
-        header("location: login.php");
-    }
+if (!isset($_SESSION["user"]) || $_SESSION['usertype'] != 'd') {
+    header("location: login.php");
+    exit();
+}
 
-    include("../connection.php");
+include("../connection.php");
 
-    $useremail = $_SESSION["user"];
-    $userrow = $database->query("SELECT * FROM doctor WHERE docemail='$useremail'");
-    $userfetch = $userrow->fetch_assoc();
-    $userid = $userfetch["docid"];
-    $username = $userfetch["docname"];
+$useremail = $_SESSION["user"];
+$userrow = $database->query("SELECT * FROM doctor WHERE docemail='$useremail'");
+$userfetch = $userrow->fetch_assoc();
+$userid = $userfetch["docid"];
+$username = $userfetch["docname"];
 
-    date_default_timezone_set('Asia/Kolkata');
-    $today = date('Y-m-d');
+date_default_timezone_set('Asia/Kolkata');
+$today = date('Y-m-d');
 
-    // Fetch bookings
-    $sqlmain = "SELECT 
-                appointment.appoid, 
-                procedures.procedure_name, 
-                patient.pname, 
-                appointment.appodate, 
-                appointment.appointment_time 
-            FROM appointment
-            INNER JOIN patient ON appointment.pid = patient.pid
-            INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
-            WHERE appointment.docid = '$userid' 
-              AND appointment.status = 'booking'";
+// Fetch bookings query
+$sqlmain = "SELECT 
+            appointment.appoid, 
+            procedures.procedure_name, 
+            patient.pname, 
+            appointment.appodate, 
+            appointment.appointment_time 
+        FROM appointment
+        INNER JOIN patient ON appointment.pid = patient.pid
+        INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
+        WHERE appointment.docid = '$userid' 
+          AND appointment.status = 'booking'";
 
+// Check if filter is applied
+if (isset($_POST['filter'])) {
+    $filterDate = $_POST['appodate'];
     
-        // Check if filter is applied
-    if (isset($_POST['filter'])) {
-        $filterDate = $_POST['appodate'];
+    if (!empty($filterDate)) {
+        $sqlmain .= " AND appointment.appodate = '$filterDate'";
+    }
+}
+
+// Execute the query
+$result = $database->query($sqlmain);
+
+// Handle booking actions
+if ($_GET) {
+    $id = $_GET["id"];
+    $action = $_GET["action"];
+
+    // First get appointment details
+    $bookingQuery = $database->query("
+        SELECT a.*, p.pid, p.pname, p.pemail, pr.procedure_name 
+        FROM appointment a
+        JOIN patient p ON a.pid = p.pid
+        JOIN procedures pr ON a.procedure_id = pr.procedure_id
+        WHERE a.appoid = '$id' AND a.docid = '$userid'
+    ");
+    
+    if ($bookingQuery && $bookingQuery->num_rows > 0) {
+        $booking = $bookingQuery->fetch_assoc();
         
-        if (!empty($filterDate)) {
-            $sqlmain .= " AND appointment.appodate = '$filterDate'";
+        if ($action == 'accept') {
+            $database->query("UPDATE appointment SET status='appointment' WHERE appoid='$id'");
+            
+            // Create notification for patient
+            $notificationTitle = "Booking Accepted";
+            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " . 
+                                 date('M j, Y', strtotime($booking['appodate'])) . " at " . 
+                                 date('g:i A', strtotime($booking['appointment_time'])) . 
+                                 " has been accepted by Dr. " . $username;
+            
+            $notificationQuery = $database->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $booking['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $id
+            );
+            $notificationQuery->execute();
+            
+            header("Location: booking.php");
+            exit();
+            
+        } elseif ($action == 'reject') {
+            // Archive appointment before deleting
+            $status = 'rejected';
+            $rejectedBy = 'dentist';
+        
+            $archiveQuery = $database->prepare("
+                INSERT INTO appointment_archive (
+                    appoid, pid, docid, appodate, appointment_time,
+                    procedure_id, event_name, status, cancel_reason, archived_at
+                )
+                SELECT appoid, pid, docid, appodate, appointment_time,
+                       procedure_id, event_name, ?, ?, NOW()
+                FROM appointment 
+                WHERE appoid = ?
+            ");
+            $archiveQuery->bind_param("ssi", $status, $rejectedBy, $id);
+            $archiveQuery->execute();
+        
+            // Then delete from appointment table
+            $database->query("DELETE FROM appointment WHERE appoid='$id'");
+        
+            // Create notification for patient
+            $notificationTitle = "Booking Rejected";
+            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " . 
+                                 date('M j, Y', strtotime($booking['appodate'])) . " at " . 
+                                 date('g:i A', strtotime($booking['appointment_time'])) . 
+                                 " has been rejected by Dr. " . $username;
+        
+            $notificationQuery = $database->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $booking['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $id
+            );
+            $notificationQuery->execute();
+        
+            header("Location: booking.php");
+            exit();
         }
     }
-
-    $result = $database->query($sqlmain);
-    
-
-    ?>
+}
+?>
     <div class="nav-container">
         <div class="sidebar">
             <div class="sidebar-logo">

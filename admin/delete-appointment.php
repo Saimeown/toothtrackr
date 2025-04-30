@@ -19,11 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $other_reason = isset($_POST['other_reason']) ? $_POST['other_reason'] : '';
     $full_reason = ($reason == 'Other') ? "Other: " . $other_reason : $reason;
     
-    // First get appointment details before archiving
+    // First get appointment details before archiving (including patient ID)
     $appointmentQuery = $database->query("
-        SELECT a.*, d.docemail, d.docname, p.pemail, p.pname, pr.procedure_name
+        SELECT a.*, p.pid, p.pemail, p.pname, pr.procedure_name
         FROM appointment a
-        JOIN doctor d ON a.docid = d.docid
         JOIN patient p ON a.pid = p.pid
         JOIN procedures pr ON a.procedure_id = pr.procedure_id
         WHERE a.appoid = '$appoid'
@@ -36,18 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     $appointment = $appointmentQuery->fetch_assoc();
     
-    // Determine status based on source
-    $status = 'cancelled'; // Since this is from admin side
-    
-    // Archive the appointment with correct status and reason
+    // Archive the appointment
     $archive_query = "INSERT INTO appointment_archive 
                      SELECT NULL, appoid, pid, docid, apponum, scheduleid, appodate, appointment_time, 
-                            procedure_id, event_name, ?, ?, NOW() 
+                            procedure_id, event_name, 'cancelled', ?, NOW() 
                      FROM appointment 
                      WHERE appoid = ?";
     
     $stmt = $database->prepare($archive_query);
-    $stmt->bind_param("ssi", $status, $full_reason, $appoid);
+    $stmt->bind_param("si", $full_reason, $appoid);
     $archive_result = $stmt->execute();
     
     if (!$archive_result) {
@@ -62,7 +58,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $delete_result = $stmt->execute();
     
     if ($delete_result) {
-        // Send email notifications
+        // Create notification for patient only
+        $notificationTitle = "Appointment Cancelled";
+        $notificationMessage = "Your appointment for " . $appointment['procedure_name'] . " on " . 
+                             date('M j, Y', strtotime($appointment['appodate'])) . " at " . 
+                             date('g:i A', strtotime($appointment['appointment_time'])) . 
+                             " has been cancelled. Reason: " . $full_reason;
+        
+        $notificationQuery = $database->prepare("
+            INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+            VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+        ");
+        $notificationQuery->bind_param("issi", 
+            $appointment['pid'], 
+            $notificationTitle, 
+            $notificationMessage, 
+            $appoid
+        );
+        $notificationQuery->execute();
+        
+        // Send email notification to patient
         $mail = new PHPMailer(true);
         
         try {
@@ -75,11 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             
-            // Recipients - send to patient
+            // Recipient - patient only
             $mail->setFrom('songcodent@gmail.com', 'ToothTrackr');
             $mail->addAddress($appointment['pemail'], $appointment['pname']);
-            $mail->addCC($appointment['docemail'], $appointment['docname']); // CC to dentist
-            $mail->addCC('songcodent@gmail.com'); // CC to admin
             
             // Content
             $mail->isHTML(true);
@@ -87,14 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $mail->Body = "
                 <h3>Appointment Cancellation Notification</h3>
                 <p>Your appointment has been cancelled by the clinic administration.</p>
-                <p><strong>Patient Name:</strong> {$appointment['pname']}</p>
-                <p><strong>Dentist Name:</strong> {$appointment['docname']}</p>
-                <p><strong>Appointment Date:</strong> " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
-                <p><strong>Appointment Time:</strong> {$appointment['appointment_time']}</p>
                 <p><strong>Procedure:</strong> {$appointment['procedure_name']}</p>
-                <p><strong>Reason for Cancellation:</strong> $full_reason</p>
-                <p>Please contact the clinic if you wish to reschedule or for more information.</p>
-                <p>We apologize for any inconvenience.</p>
+                <p><strong>Date:</strong> " . date('F j, Y', strtotime($appointment['appodate'])) . "</p>
+                <p><strong>Time:</strong> " . date('g:i A', strtotime($appointment['appointment_time'])) . "</p>
+                <p><strong>Reason:</strong> $full_reason</p>
+                <p>Please contact the clinic if you wish to reschedule.</p>
             ";
             
             $mail->send();
@@ -106,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode([
                 'status' => true,
-                'message' => 'Appointment cancelled successfully, but failed to send notification email.'
+                'message' => 'Appointment cancelled successfully, notification created, but email failed to send.'
             ]);
         }
     } else {

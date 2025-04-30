@@ -40,6 +40,96 @@ $doctorrow = $database->query("SELECT * FROM doctor WHERE status='active'") or d
 $patientrow = $database->query("SELECT * FROM patient WHERE status='active'") or die("Patient query failed: " . $database->error);
 $appointmentrow = $database->query("SELECT * FROM appointment WHERE status='appointment'") or die("Appointment query failed: " . $database->error);
 $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'") or die("Booking query failed: " . $database->error);
+
+// Handle booking actions
+if ($_GET) {
+    $id = $_GET["id"];
+    $action = $_GET["action"];
+
+    // First get appointment details
+    $bookingQuery = $database->query("
+        SELECT a.*, p.pid, p.pname, p.pemail, pr.procedure_name, d.docname
+        FROM appointment a
+        JOIN patient p ON a.pid = p.pid
+        JOIN procedures pr ON a.procedure_id = pr.procedure_id
+        JOIN doctor d ON a.docid = d.docid
+        WHERE a.appoid = '$id'
+    ");
+    
+    if ($bookingQuery && $bookingQuery->num_rows > 0) {
+        $booking = $bookingQuery->fetch_assoc();
+        
+        if ($action == 'accept') {
+            $database->query("UPDATE appointment SET status='appointment' WHERE appoid='$id'");
+            
+            // Create notification for patient
+            $notificationTitle = "Booking Accepted";
+            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " . 
+                                 date('M j, Y', strtotime($booking['appodate'])) . " at " . 
+                                 date('g:i A', strtotime($booking['appointment_time'])) . 
+                                 " has been accepted by the clinic.";
+            
+            $notificationQuery = $database->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $booking['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $id
+            );
+            $notificationQuery->execute();
+            
+            header("Location: booking.php");
+            exit();
+            
+        } elseif ($action == 'reject') {
+            // Archive appointment before deleting
+            $status = 'rejected';
+            $rejectedBy = 'clinic';
+        
+            $archiveQuery = $database->prepare("
+                INSERT INTO appointment_archive (
+                    archive_id, appoid, pid, docid, apponum, scheduleid, appodate, appointment_time,
+                    procedure_id, event_name, status, cancel_reason, archived_at
+                )
+                SELECT NULL, appoid, pid, docid, apponum, scheduleid, appodate, appointment_time,
+                       procedure_id, event_name, ?, ?, NOW()
+                FROM appointment 
+                WHERE appoid = ?
+            ");
+            $archiveQuery->bind_param("ssi", $status, $rejectedBy, $id);
+            $archiveQuery->execute();
+        
+            // Then delete from appointment table
+            $database->query("DELETE FROM appointment WHERE appoid='$id'");
+        
+            // Create notification for patient
+            $notificationTitle = "Booking Rejected";
+            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " . 
+                                 date('M j, Y', strtotime($booking['appodate'])) . " at " . 
+                                 date('g:i A', strtotime($booking['appointment_time'])) . 
+                                 " has been rejected by the clinic.";
+        
+            $notificationQuery = $database->prepare("
+                INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
+                VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
+            ");
+            $notificationQuery->bind_param("issi", 
+                $booking['pid'], 
+                $notificationTitle, 
+                $notificationMessage, 
+                $id
+            );
+            $notificationQuery->execute();
+        
+            header("Location: booking.php");
+            exit();
+        }
+        
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
