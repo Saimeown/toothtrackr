@@ -58,20 +58,31 @@ $pdf->SetSubject('Medical Record');
 class MYPDF extends TCPDF {
     // Page header
     public function Header() {
-        // Logo
-        $image_file = '../assets/img/logo.png'; // Change to your logo path
+        // Logo - positioned at the top center
+        $image_file = '../Media/Icon/SDMC Logo.jpg';
         if (file_exists($image_file)) {
-            $this->Image($image_file, 15, 10, 25, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+            // Center the logo (X position calculated as (page width - image width)/2)
+            $image_width = 25;
+            $page_width = $this->getPageWidth();
+            $x_pos = ($page_width - $image_width) / 2;
+            
+            // Place the logo at the top (Y position 10mm from top)
+            $this->Image($image_file, $x_pos, 10, $image_width, '', 'JPG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+            
+            // Move position down below the logo for the text (30mm from top)
+            $this->SetY(46);
+        } else {
+            // If no logo, start text at normal position
+            $this->SetY(20);
         }
-        // Set font
+        
+        // Set font and add clinic name
         $this->SetFont('helvetica', 'B', 12);
-        // Title
         $this->Cell(0, 15, 'Songco Dental and Medical Clinic', 0, false, 'C', 0, '', 0, false, 'M', 'M');
-        // Line break
         $this->Ln(10);
-        // Thin line
-        $this->Line(15, 30, 195, 30, array('width' => 0.2));
+        $this->Line(15, $this->GetY(), 195, $this->GetY(), array('width' => 0.2));
     }
+
 
     // Page footer
     public function Footer() {
@@ -171,10 +182,11 @@ $html = '
     }
 </style>
 
-<div class="header">PATIENT MEDICAL HISTORY</div>
+<div class="header">MEDICAL RECORD</div>
+<BR>
 <div class="subheader">ToothTrackr | Confidential Patient Document</div>
-
-<div class="section-title">PATIENT INFORMATION</div>
+<BR><BR><BR>
+<div class="section-title"> PATIENT INFORMATION</div>
 <BR>
 <table class="full-width">
     <tr>
@@ -192,7 +204,7 @@ $html = '
     </tr>
 </table>
 <BR>
-<div class="section-title">MEDICAL HISTORY</div>
+<div class="section-title"> MEDICAL RECORD</div>
 <table class="full-width">
     <tr>
         <td class="bordered-cell" width="50%">
@@ -218,7 +230,7 @@ $html = '
     </tr>
 </table>
 <BR>
-<div class="section-title">DENTAL HEALTH INFORMATION</div>
+<div class="section-title"> OTHER INFORMATION</div>
 <table class="full-width">
     <tr>
         <td class="bordered-cell" width="50%">
@@ -234,7 +246,7 @@ $html = '
 
 <div class="vertical-space"></div>
 
-<div class="section-title">CERTIFICATION</div>
+<div class="section-title"> CERTIFICATION</div>
 <br><br><br><br>
 <table class="full-width">
     <tr>
@@ -253,6 +265,7 @@ $html = '
     </tr>
 </table>
 
+<br><br><br><br><br><br>
 <div class="official-stamp">
     <i>This document is valid only with official clinic stamp and signature</i>
 </div>
