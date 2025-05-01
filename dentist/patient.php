@@ -1,6 +1,260 @@
+<?php
+session_start();
+
+if (!isset($_SESSION["user"])) {
+    header("location: login.php");
+    exit();
+}
+
+if ($_SESSION['usertype'] != 'd') {
+    header("location: login.php");
+    exit();
+}
+
+// Import database connection
+include("../connection.php");
+date_default_timezone_set('Asia/Singapore');
+
+$useremail = $_SESSION["user"];
+$userrow = $database->query("SELECT * FROM doctor WHERE docemail='$useremail'");
+$userfetch = $userrow->fetch_assoc();
+$userid = $userfetch["docid"];
+$username = $userfetch["docname"];
+
+// Get counts for sidebar
+$patientrow = $database->query("SELECT COUNT(DISTINCT pid) FROM appointment WHERE docid='$userid'");
+$appointmentrow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='booking' AND docid='$userid'");
+$schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='appointment' AND docid='$userid'");
+
+// Calendar variables
+$today = date('Y-m-d');
+$currentMonth = date('F');
+$currentYear = date('Y');
+$daysInMonth = date('t');
+$firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
+$currentDay = date('j');
+
+// Pagination
+$results_per_page = 10;
+
+// Determine which page we're on
+if (isset($_GET['page'])) {
+    $page = $_GET['page'];
+} else {
+    $page = 1;
+}
+
+// Calculate the starting limit for SQL
+$start_from = ($page - 1) * $results_per_page;
+
+// Search functionality
+$search = "";
+$sort_param = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+$sort_order = ($sort_param === 'oldest') ? 'DESC' : 'ASC';
+
+if (isset($_GET['search'])) {
+    $search = $_GET['search'];
+    $sqlmain = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
+               WHERE appointment.docid = '$userid' AND patient.status='active' 
+               AND (patient.pname LIKE '%$search%' OR patient.pemail LIKE '%$search%' OR patient.ptel LIKE '%$search%') 
+               ORDER BY patient.pname $sort_order LIMIT $start_from, $results_per_page";
+               
+    $sqlmain_inactive = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
+                        WHERE appointment.docid = '$userid' AND patient.status='inactive' 
+                        AND (patient.pname LIKE '%$search%' OR patient.pemail LIKE '%$search%' OR patient.ptel LIKE '%$search%')";
+                        
+    $count_query = "SELECT COUNT(DISTINCT patient.pid) as total FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
+                   WHERE appointment.docid = '$userid' AND patient.status='active' 
+                   AND (patient.pname LIKE '%$search%' OR patient.pemail LIKE '%$search%' OR patient.ptel LIKE '%$search%')";
+} else {
+    $sqlmain = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
+               WHERE appointment.docid = '$userid' AND patient.status='active' 
+               ORDER BY patient.pname $sort_order LIMIT $start_from, $results_per_page";
+               
+    $sqlmain_inactive = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
+                        WHERE appointment.docid = '$userid' AND patient.status='inactive'";
+                        
+    $count_query = "SELECT COUNT(DISTINCT patient.pid) as total FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
+                   WHERE appointment.docid = '$userid' AND patient.status='active'";
+}
+
+$result_active = $database->query($sqlmain);
+$active_count = $result_active->num_rows;
+
+$result_inactive = $database->query($sqlmain_inactive);
+$inactive_count = $result_inactive->num_rows;
+
+$count_result = $database->query($count_query);
+$count_row = $count_result->fetch_assoc();
+$total_pages = ceil($count_row['total'] / $results_per_page);
+
+if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    // Fetch patient details from the database
+    $sqlmain = "SELECT * FROM patient WHERE pid = ?";
+    $stmt = $database->prepare($sqlmain);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $name = $row["pname"];
+        $email = $row["pemail"];
+        $dob = $row["pdob"];
+        $tel = $row["ptel"];
+        $address = $row["paddress"];
+        $status = $row["status"];
+        $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
+
+        $sqlHistory = "SELECT * FROM medical_history WHERE email='$email'";
+        $resultHistory = $database->query($sqlHistory);
+
+        echo '
+        <div id="popup1" class="overlay">
+            <div class="popup">
+                <center>
+                    <a class="close" href="patient.php">&times;</a>
+                    <div style="display: flex;justify-content: center;">
+                        <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
+                            <tr>
+                                <td class="label-td" colspan="2">
+                                    <img src="' . $profile_pic . '" alt="Patient Photo"
+                                        style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; margin-bottom: 20px;">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">View Details</p><br><br>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2"><label for="name" class="form-label">Patient ID: </label></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2">P-' . $id . '<br><br></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2"><label for="name" class="form-label">Name: </label></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2">' . $name . '<br><br></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2"><label for="Email" class="form-label">Email: </label></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2">' . $email . '<br><br></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2"><label for="Tele" class="form-label">Telephone: </label></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2">' . $tel . '<br><br></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2"><label for="spec" class="form-label">Address: </label></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2">' . $address . '<br><br></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2"><label for="name" class="form-label">Date of Birth: </label></td>
+                            </tr>
+                            <tr>
+                                <td class="label-td" colspan="2">' . $dob . '<br><br></td>
+                            </tr>';
+
+        if ($resultHistory->num_rows > 0) {
+            $rowHistory = $resultHistory->fetch_assoc();
+            echo '
+                            <tr>
+                                <td colspan="2" style="padding-top: 20px; text-align: center;">
+                                    <h3>Medical History</h3>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Good Health:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["good_health"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Under Treatment:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["under_treatment"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Had a serious surgical operation:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["condition_treated"] ?: "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Had a serious illness:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["serious_illness"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Hospitalized:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["hospitalized"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Taking any prescription/non-prescription medication:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Medication Specify:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication_specify"] ?: "-") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Use Tobacco:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["tobacco"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Use Alcohol or Dangerous Drugs:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["drugs"] ?? "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Have Allergies:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["allergies"] ?: "No") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Blood Pressure:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["blood_pressure"] ?: "-") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Bleeding Time:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["bleeding_time"] ?: "-") . '</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px;"><strong>Health Conditions:</strong></td>
+                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["health_conditions"] ?: "None") . '</td>
+                            </tr>';
+        } else {
+            echo '
+                            <tr>
+                                <td colspan="2" style="padding: 20px; text-align: center;">
+                                    <p>No medical history found for this patient.</p>
+                                </td>
+                            </tr>';
+        }
+
+        echo '
+                            <tr>
+                                <td colspan="2">
+                                    <a href="patient.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn"></a>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </center>
+            </div>
+        </div>';
+    } else {
+        echo "<script>alert('Patient not found!');</script>";
+        header("Location: patient.php");
+        exit();
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
-
 
 <head>
     <meta charset="UTF-8">
@@ -9,101 +263,102 @@
     <link rel="stylesheet" href="../css/animations.css">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
-    <link rel="stylesheet" href="../css/dental-record.css">
     <link rel="stylesheet" href="../css/dashboard.css">
-
-
-    <title>My Patients - ToothTrackr</title>
+    <link rel="stylesheet" href="../css/table.css">
+    <title>Patient - ToothTrackr</title>
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
+
     <style>
-        #addPopup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-
-
         .popup {
             animation: transitionIn-Y-bottom 0.5s;
-            width: 80em;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            max-height: 80%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            position: relative;
         }
-
-
-        /* Close button style */
-        #addPopup .close {
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            font-size: 30px;
-            color: #000;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
 
         .sub-table {
             animation: transitionIn-Y-bottom 0.5s;
         }
-       
-        .patient-pic {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #ddd;
-        }
-
-
+        
         .overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 9999;
         }
 
-
         .popup {
-            animation: transitionIn-Y-bottom 0.5s;
-            width: 80em;
-            background-color: #fff;
-            padding: 20px;
+            background-color: white;
+            padding: 30px;
             border-radius: 10px;
-            max-height: 80%;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
             overflow-y: auto;
-            overflow-x: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
             position: relative;
         }
 
-
-        .popup .close {
+        .close {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 30px;
-            color: #000;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            color: #333;
             text-decoration: none;
             cursor: pointer;
+            z-index: 10000;
         }
        
+        .stats-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .stat-box {
+            height: 100%;
+        }
+        .right-sidebar {
+            width: 320px;
+        }
+
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .profile-img-small {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .view-btn {
+            width: 120px;
+        }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .inactive-table {
+            opacity: 0.8;
+        }
         .table-section {
             margin-bottom: 40px;
             background: #fff;
@@ -111,7 +366,6 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             padding: 20px;
         }
-       
         .table-title {
             font-size: 18px;
             color: #333;
@@ -119,126 +373,20 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
-       
-        .inactive-table {
-            opacity: 0.8;
-        }
-       
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-       
-        .status-active {
-            background-color: #d4edda;
-            color: #155724;
-        }
-       
-        .status-inactive {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .content-area {
-            height: 100vh; /* This makes it take full viewport height */
-            overflow-y: auto; /* This enables vertical scrolling */
-            padding-bottom: 20px; /* Adds some padding at the bottom */
-        }
     </style>
 </head>
 
-
 <body>
-    <?php    
-    session_start();
-
-
-    if (isset($_SESSION["user"])) {
-        if (($_SESSION["user"]) == "" || $_SESSION['usertype'] != 'd') {
-            header("location: login.php");
-        } else {
-            $useremail = $_SESSION["user"];
-        }
-    } else {
-        header("location: login.php");
-    }
-
-
-    //import database
-    include("../connection.php");
-    $userrow = $database->query("select * from doctor where docemail='$useremail'");
-    $userfetch = $userrow->fetch_assoc();
-    $userid = $userfetch["docid"];
-    $username = $userfetch["docname"];
-
-
-    $selecttype = "My";
-    $current = "My patients Only";
-    if ($_POST) {
-        if (isset($_POST["search"])) {
-            $keyword = $_POST["search12"];
-            $sqlmain = "select distinct * from patient where (pemail='$keyword' or pname='$keyword' or pname like '$keyword%' or pname like '%$keyword' or pname like '%$keyword%') and status='active'";
-            $sqlmain_inactive = "select distinct * from patient where (pemail='$keyword' or pname='$keyword' or pname like '$keyword%' or pname like '%$keyword' or pname like '%$keyword%') and status='inactive'";
-            $selecttype = "my";
-        }
-
-
-        if (isset($_POST["filter"])) {
-            if ($_POST["showonly"] == 'all') {
-                $sqlmain = "select * from patient where status='active'";
-                $sqlmain_inactive = "select * from patient where status='inactive'";
-                $selecttype = "All";
-                $current = "All patients";
-            } else {
-                $sqlmain = "SELECT patient.* FROM appointment INNER JOIN patient ON patient.pid = appointment.pid WHERE appointment.docid = $userid AND patient.status='active' GROUP BY patient.pid";
-                $sqlmain_inactive = "SELECT patient.* FROM appointment INNER JOIN patient ON patient.pid = appointment.pid WHERE appointment.docid = $userid AND patient.status='inactive' GROUP BY patient.pid";
-                $selecttype = "My";
-                $current = "My patients Only";
-            }
-        }
-    } else {
-        // Active patients with most recent appointment
-        $sqlmain = "
-            SELECT patient.*
-            FROM appointment
-            INNER JOIN patient ON patient.pid = appointment.pid
-            WHERE appointment.docid = $userid AND patient.status='active'
-            GROUP BY patient.pid
-        ";
-       
-        // Inactive patients who were previously patients
-        $sqlmain_inactive = "
-            SELECT patient.*
-            FROM appointment
-            INNER JOIN patient ON patient.pid = appointment.pid
-            WHERE appointment.docid = $userid AND patient.status='inactive'
-            GROUP BY patient.pid
-        ";
-       
-        $selecttype = "My";
-    }
-   
-    // Get counts for both tables
-    $result_active = $database->query($sqlmain);
-    $active_count = $result_active->num_rows;
-   
-    $result_inactive = $database->query($sqlmain_inactive);
-    $inactive_count = $result_inactive->num_rows;
-    ?>
-    <div class="nav-container">
+    <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
             </div>
 
-
             <div class="user-profile">
                 <div class="profile-image">
                     <?php
                     $userphoto = $userfetch["photo"];
-
-
                     if (!empty($userphoto) && file_exists("../admin/uploads/" . $userphoto)) {
                         $photopath = "../admin/uploads/" . $userphoto;
                     } else {
@@ -252,7 +400,6 @@
                     <?php echo substr($useremail, 0, 30); ?>
                 </p>
             </div>
-
 
             <div class="nav-menu">
                 <a href="dashboard.php" class="nav-item">
@@ -285,122 +432,69 @@
                 </a>
             </div>
 
-
             <div class="log-out">
                 <a href="logout.php" class="nav-item">
                     <img src="../Media/Icon/Blue/logout.png" alt="Log Out" class="nav-icon">
                     <span class="nav-label">Log Out</span>
                 </a>
             </div>
-        </div>    
+        </div>
 
+        <div class="content-area">
+            <div class="content">
+                <div class="main-section">
+                    <!-- search bar -->
+                    <div class="search-container">
+                        <form action="" method="GET" style="display: flex; width: 100%;">
+                            <input type="search" name="search" id="searchInput" class="search-input"
+                                placeholder="Search by name, email or phone number"
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <?php if (isset($_GET['search']) && $_GET['search'] != ""): ?>
+                                <button type="button" class="clear-btn" onclick="clearSearch()">×</button>
+                            <?php endif; ?>
+                        </form>
+                    </div>
 
-    <div class="content-area">
-        <table border="0" width="100%" style=" border-spacing: 0;margin:0;padding:0;margin-top:25px; ">
-            <tr>
-                <td width="13%">
-                    <a href="patient.php"><button class="login-btn btn-primary-soft btn btn-icon-back"
-                            style="padding-top:11px;padding-bottom:11px;margin-left:20px;width:125px">
-                            <font class="tn-in-text">Back</font>
-                        </button></a>
-                </td>
-                <td>
-                    <form action="" method="post" class="header-search">
-                        <input type="search" name="search12" class="input-text header-searchbar"
-                            placeholder="Search Patient name or Email" list="patient">&nbsp;&nbsp;
+                    <!-- header -->
+                    <div class="announcements-header">
+                        <h3 class="announcements-title">Manage Patients</h3>
+                        <div class="announcement-filters">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+                            ?>
+                            <a href="?sort=newest<?php echo $searchParam; ?>"
+                                class="filter-btn newest-btn <?php echo ($currentSort === 'newest' || $currentSort === '') ? 'active' : 'inactive'; ?>">
+                                A-Z
+                            </a>
 
+                            <a href="?sort=oldest<?php echo $searchParam; ?>"
+                                class="filter-btn oldest-btn <?php echo $currentSort === 'oldest' ? 'active' : 'inactive'; ?>">
+                                Z-A
+                            </a>
+                        </div>
+                    </div>
 
-                        <?php
-                        echo '<datalist id="patient">';
-                        $list11 = $database->query($sqlmain);
-                       
-                        for ($y = 0; $y < $list11->num_rows; $y++) {
-                            $row00 = $list11->fetch_assoc();
-                            $d = $row00["pname"];
-                            $c = $row00["pemail"];
-                            echo "<option value='$d'><br/>";
-                            echo "<option value='$c'><br/>";
-                        };
-                        echo ' </datalist>';
-                        ?>
-
-
-                        <input type="Submit" value="Search" name="search" class="login-btn btn-primary btn"
-                            style="padding-left: 25px;padding-right: 25px;padding-top: 10px;padding-bottom: 10px;">
-                    </form>
-                </td>
-                <td width="15%">
-                    <p style="font-size: 14px;color: rgb(119, 119, 119);padding: 0;margin: 0;text-align: right;">
-                        Today's Date
-                    </p>
-                    <p class="heading-sub12" style="padding: 0;margin: 0;">
-                        <?php
-                        date_default_timezone_set('Asia/Kolkata');
-                        $date = date('Y-m-d');
-                        echo $date;
-                        ?>
-                    </p>
-                </td>
-                <td width="10%">
-                    <button class="btn-label" style="display: flex;justify-content: center;align-items: center;"><img
-                            src="../img/calendar.svg" width="100%"></button>
-                </td>
-            </tr>
-
-
-            <tr>
-                <td colspan="4" style="padding-top:0px;width: 100%;">
-                    <center>
-                        <table class="filter-container" border="0">
-                            <form action="" method="post">
-                                <td style="text-align: right;">
-                                    Show Details About : &nbsp;
-                                </td>
-                                <td width="30%">
-                                    <select name="showonly" id="" class="box filter-container-items"
-                                        style="width:90% ;height: 37px;margin: 0;">
-                                        <option value="" disabled selected hidden><?php echo $current ?></option>
-                                        <br />
-                                        <option value="my">My Patients Only</option><br />
-                                        <option value="all">All Patients</option><br />
-                                    </select>
-                                </td>
-                                <td width="12%">
-                                    <input type="submit" name="filter" value=" Filter"
-                                        class=" btn-primary-soft btn button-icon btn-filter"
-                                        style="padding: 15px; margin :0;width:100%">
-                                </td>
-                            </form>
-                        </table>
-                    </center>
-                </td>
-            </tr>
-
-
-            <tr>
-                <td colspan="4">
-                    <center>
-                        <!-- Active Patients Table -->
-                        <div class="table-section">
-                            <h3 class="table-title">Active Patients (<?php echo $active_count; ?>)</h3>
-                            <div class="abc scroll">
-                                <table width="100%" class="sub-table scrolldown" style="border-spacing:0;">
-                                    <thead>
-                                        <tr>
-                                            <th class="table-headin">Status</th>
-                                            <th class="table-headin">Name</th>
-                                            <th class="table-headin">Picture</th>
-                                            <th class="table-headin">Telephone</th>
-                                            <th class="table-headin">Email</th>
-                                            <th class="table-headin">Date of Birth</th>
-                                            <th class="table-headin">Events</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $result = $database->query($sqlmain);
-                                        if ($result->num_rows == 0) {
-                                            echo '<tr>
+                    <!-- Active Patients Table -->
+                    <div class="table-section">
+                        <h3 class="table-title">Active Patients (<?php echo $active_count; ?>)</h3>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Profile</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Contact</th>
+                                        <th>Date of Birth</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    if ($result_active->num_rows == 0) {
+                                        echo '<tr>
                                             <td colspan="7">
                                             <br><br><br><br>
                                             <center>
@@ -412,73 +506,59 @@
                                             <br><br><br><br>
                                             </td>
                                             </tr>';
-                                        } else {
-                                            for ($x = 0; $x < $result->num_rows; $x++) {
-                                                $row = $result->fetch_assoc();
-                                                $pid = $row["pid"];
-                                                $name = $row["pname"];
-                                                $email = $row["pemail"];
-                                                $dob = $row["pdob"];
-                                                $tel = $row["ptel"];
-                                                $status = $row["status"];
-                                                $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
+                                    } else {
+                                        while ($row = $result_active->fetch_assoc()) {
+                                            $pid = $row["pid"];
+                                            $name = $row["pname"];
+                                            $email = $row["pemail"];
+                                            $dob = $row["pdob"];
+                                            $tel = $row["ptel"];
+                                            $status = $row["status"];
+                                            $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
 
-
-                                                echo '<tr>
-                                                    <td><span class="status-badge status-active">Active</span></td>
-                                                    <td> &nbsp;' .
-                                                        substr($name, 0, 35)
-                                                        . '</td>
-                                                    <td style="text-align: center;">
-                                                        <img src="' . $profile_pic . '" alt="Profile" class="patient-pic">
-                                                    </td>
-                                                    <td>
-                                                        ' . substr($tel, 0, 10) . '
-                                                    </td>
-                                                    <td>
-                                                    ' . substr($email, 0, 20) . '
-                                                     </td>
-                                                    <td>
-                                                    ' . substr($dob, 0, 10) . '
-                                                    </td>
-                                                    <td>
-                                                    <div style="display:flex;justify-content: center;">
-                                                   
-                                                    <a href="?action=view&id=' . $pid . '" class="non-style-link"><button class="btn-primary-soft btn button-icon btn-view" style="padding-left: 60px;padding-right: 60px;padding-top: 12px;padding-bottom: 12px;margin-top: 10px;"><font class="tn-in-text">View</font></button></a>
-
-
-                                                    </div>
-                                                    </td>
-                                                </tr>';
-                                            }
-                                        }
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                       
-                        <!-- Inactive Patients Table -->
-                        <div class="table-section inactive-table">
-                            <h3 class="table-title">Inactive Patients (<?php echo $inactive_count; ?>)</h3>
-                            <div class="abc scroll">
-                                <table width="100%" class="sub-table scrolldown" style="border-spacing:0;">
-                                    <thead>
-                                        <tr>
-                                            <th class="table-headin">Status</th>
-                                            <th class="table-headin">Name</th>
-                                            <th class="table-headin">Picture</th>
-                                            <th class="table-headin">Telephone</th>
-                                            <th class="table-headin">Email</th>
-                                            <th class="table-headin">Date of Birth</th>
-                                            <th class="table-headin">Events</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $result_inactive = $database->query($sqlmain_inactive);
-                                        if ($result_inactive->num_rows == 0) {
                                             echo '<tr>
+                                                <td>
+                                                    <img src="' . $profile_pic . '" alt="' . $name . '" class="profile-img-small">
+                                                </td>
+                                                <td><div class="cell-text">' . $name . '</div></td>
+                                                <td><div class="cell-text">' . $email . '</div></td>
+                                                <td><div class="cell-text">' . $tel . '</div></td>
+                                                <td><div class="cell-text">' . $dob . '</div></td>
+                                                <td><span class="status-badge status-active">Active</span></td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <a href="?action=view&id=' . $pid . '" class="action-btn view-btn">View</a>
+                                                    </div>
+                                                </td>
+                                            </tr>';
+                                        }
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Inactive Patients Table -->
+                    <div class="table-section inactive-table">
+                        <h3 class="table-title">Inactive Patients (<?php echo $inactive_count; ?>)</h3>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Profile</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Contact</th>
+                                        <th>Date of Birth</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    if ($result_inactive->num_rows == 0) {
+                                        echo '<tr>
                                             <td colspan="7">
                                             <br><br><br><br>
                                             <center>
@@ -490,234 +570,283 @@
                                             <br><br><br><br>
                                             </td>
                                             </tr>';
-                                        } else {
-                                            for ($x = 0; $x < $result_inactive->num_rows; $x++) {
-                                                $row = $result_inactive->fetch_assoc();
-                                                $pid = $row["pid"];
-                                                $name = $row["pname"];
-                                                $email = $row["pemail"];
-                                                $dob = $row["pdob"];
-                                                $tel = $row["ptel"];
-                                                $status = $row["status"];
-                                                $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
+                                    } else {
+                                        while ($row = $result_inactive->fetch_assoc()) {
+                                            $pid = $row["pid"];
+                                            $name = $row["pname"];
+                                            $email = $row["pemail"];
+                                            $dob = $row["pdob"];
+                                            $tel = $row["ptel"];
+                                            $status = $row["status"];
+                                            $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
 
-
-                                                echo '<tr>
-                                                    <td><span class="status-badge status-inactive">Inactive</span></td>
-                                                    <td> &nbsp;' .
-                                                        substr($name, 0, 35)
-                                                        . '</td>
-                                                    <td style="text-align: center;">
-                                                        <img src="' . $profile_pic . '" alt="Profile" class="patient-pic">
-                                                    </td>
-                                                    <td>
-                                                        ' . substr($tel, 0, 10) . '
-                                                    </td>
-                                                    <td>
-                                                    ' . substr($email, 0, 20) . '
-                                                     </td>
-                                                    <td>
-                                                    ' . substr($dob, 0, 10) . '
-                                                    </td>
-                                                    <td>
-                                                    <div style="display:flex;justify-content: center;">
-                                                   
-                                                    <a href="?action=view&id=' . $pid . '" class="non-style-link"><button class="btn-primary-soft btn button-icon btn-view" style="padding-left: 60px;padding-right: 60px;padding-top: 12px;padding-bottom: 12px;margin-top: 10px;"><font class="tn-in-text">View</font></button></a>
-
-
+                                            echo '<tr>
+                                                <td>
+                                                    <img src="' . $profile_pic . '" alt="' . $name . '" class="profile-img-small">
+                                                </td>
+                                                <td><div class="cell-text">' . $name . '</div></td>
+                                                <td><div class="cell-text">' . $email . '</div></td>
+                                                <td><div class="cell-text">' . $tel . '</div></td>
+                                                <td><div class="cell-text">' . $dob . '</div></td>
+                                                <td><span class="status-badge status-inactive">Inactive</span></td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <a href="?action=view&id=' . $pid . '" class="action-btn view-btn">View</a>
                                                     </div>
-                                                    </td>
-                                                </tr>';
-                                            }
+                                                </td>
+                                            </tr>';
                                         }
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </center>
-                </td>
-            </tr>
-        </table>
-    </div>
-    </div>
-
-
-    <?php
-    if ($_GET) {
-        $id = $_GET["id"];
-        $action = $_GET["action"];
-
-
-        $sqlPatient = "SELECT * FROM patient WHERE pid='$id'";
-        $resultPatient = $database->query($sqlPatient);
-        $rowPatient = $resultPatient->fetch_assoc();
-
-
-        $name = $rowPatient["pname"];
-        $email = $rowPatient["pemail"];
-        $dob = $rowPatient["pdob"];
-        $tele = $rowPatient["ptel"];
-        $address = $rowPatient["paddress"];
-        $status = $rowPatient["status"];
-        $profile_pic = !empty($rowPatient["profile_pic"]) ? "../" . $rowPatient["profile_pic"] : "../Media/Icon/Blue/profile.png";
-
-
-        $sqlHistory = "SELECT * FROM medical_history WHERE email='$email'";
-        $resultHistory = $database->query($sqlHistory);
-
-
-        echo '
-            <div id="popup1" class="overlay">
-                <div class="popup">
-                    <center>
-                        <a class="close" href="patient.php">&times;</a>
-                        
-                        <div style="display: flex; justify-content: center;">
-                            <table width="90%" class="sub-table scrolldown add-doc-form-container" border="0" style="text-align: left;">
-                                <tr>
-                                    <td colspan="2" style="padding-bottom: 20px; text-align: center;">
-                                        <img src="' . $profile_pic . '" alt="Profile" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid ' . ($status == 'active' ? '#2ecc71' : '#e74c3c') . ';">
-                                        <h3>Patient Information</h3>
-                                        <span class="status-badge ' . ($status == 'active' ? 'status-active' : 'status-inactive') . '">' . ucfirst($status) . '</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="width: 50%; padding: 10px;"><strong>Patient ID:</strong></td>
-                                    <td style="width: 50%; padding: 10px;">P-' . htmlspecialchars($id) . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Patient Name:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($name) . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Email:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($email) . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Telephone:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($tele) . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Date of Birth:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($dob) . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Address:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($address) . '</td>
-                                </tr>';
-
-
-        if ($resultHistory->num_rows > 0) {
-            $rowHistory = $resultHistory->fetch_assoc();
-
-
-            echo '
-                                <tr>
-                                    <td colspan="2" style="padding-top: 20px; text-align: center;">
-                                        <h3>Medical History</h3>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Good Health:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["good_health"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Under Treatment:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["under_treatment"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Had a serious surgical operation:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["condition_treated"] ?: "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Had a serious illness:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["serious_illness"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Hospitalized:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["hospitalized"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Taking any prescription/non-prescription medication:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Medication Specify:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication_specify"] ?: "-") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Use Tobacco:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["tobacco"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Use Alcohol or Dangerous Drugs:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["drugs"] ?? "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Have Allergies:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["allergies"] ?: "No") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Blood Pressure:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["blood_pressure"] ?: "-") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Bleeding Time:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["bleeding_time"] ?: "-") . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Health Conditions:</strong></td>
-                                    <td style="padding: 10px;">' . htmlspecialchars($rowHistory["health_conditions"] ?: "None") . '</td>
-                                </tr>';
-        } else {
-            echo '
-                                <tr>
-                                    <td colspan="2" style="padding: 20px; text-align: center;">
-                                        <p>No medical history found for this patient.</p>
-                                    </td>
-                                </tr>';
-        }
-
-
-        echo '
-                                <tr>
-                                    <td colspan="2" style="text-align: center; padding-top: 20px;">
-                                        <a href="patient.php"><input type="button" value="Back" class="login-btn btn-primary-soft btn"></a>
-                                    </td>
-                                </tr>
+                                    }
+                                    ?>
+                                </tbody>
                             </table>
                         </div>
-                    </center>
-                    <br><br>
-                </div>
-            </div>';
-    }
-    ?>
+                    </div>
 
+                    <!-- Pagination -->
+                    <div class="pagination">
+                        <?php
+                        $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                        $sortParam = '&sort=' . $currentSort;
+                        $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+
+                        // Previous link
+                        if ($page > 1) {
+                            echo '<a href="?page=' . ($page - 1) . $searchParam . $sortParam . '">&laquo; Previous</a>';
+                        }
+
+                        // Page links
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+
+                        for ($i = $start_page; $i <= $end_page; $i++) {
+                            echo '<a href="?page=' . $i . $searchParam . $sortParam . '"' . ($i == $page ? ' class="active"' : '') . '>' . $i . '</a>';
+                        }
+
+                        // Next link
+                        if ($page < $total_pages) {
+                            echo '<a href="?page=' . ($page + 1) . $searchParam . $sortParam . '">Next &raquo;</a>';
+                        }
+                        ?>
+                    </div>
+                </div>
+
+                <!-- Right sidebar section -->
+                <div class="right-sidebar">
+                    <div class="stats-section">
+                        <div class="stats-container">
+                            <!-- First row -->
+                            <a href="patient.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php echo $patientrow->fetch_row()[0] ?? 0; ?></h1>
+                                        <p class="stat-label">My Patients</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/care.png" alt="Patients Icon">
+                                    </div>
+                                </div>
+                            </a>
+
+                            <!-- Second row -->
+                            <a href="booking.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php
+                                        $bookingCount = $appointmentrow->fetch_row()[0] ?? 0;
+                                        echo $bookingCount;
+                                        ?></h1>
+                                        <p class="stat-label">Bookings</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
+                                        <?php if ($bookingCount > 0): ?>
+                                            <span class="notification-badge"><?php echo $bookingCount; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <a href="appointment.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php
+                                        $appointmentCount = $schedulerow->fetch_row()[0] ?? 0;
+                                        echo $appointmentCount;
+                                        ?></h1>
+                                        <p class="stat-label">Appointments</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
+                                        <?php if ($appointmentCount > 0): ?>
+                                            <span class="notification-badge"><?php echo $appointmentCount; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="calendar-section">
+                        <!-- Dynamic Calendar -->
+                        <div class="calendar-container">
+                            <div class="calendar-header">
+                                <h3 class="calendar-month">
+                                    <?php
+                                    // Get current month name dynamically
+                                    echo strtoupper(date('F', strtotime('this month')));
+                                    ?>
+                                </h3>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day">S</div>
+                                <div class="calendar-day">M</div>
+                                <div class="calendar-day">T</div>
+                                <div class="calendar-day">W</div>
+                                <div class="calendar-day">T</div>
+                                <div class="calendar-day">F</div>
+                                <div class="calendar-day">S</div>
+
+                                <?php
+                                // Calculate the previous month's spillover days
+                                $previousMonthDays = $firstDayOfMonth - 1;
+                                $previousMonthLastDay = date('t', strtotime('last month'));
+                                $startDay = $previousMonthLastDay - $previousMonthDays + 1;
+
+                                // Display previous month's spillover days
+                                for ($i = 0; $i < $previousMonthDays; $i++) {
+                                    echo '<div class="calendar-date other-month">' . $startDay . '</div>';
+                                    $startDay++;
+                                }
+
+                                // Display current month's days
+                                for ($day = 1; $day <= $daysInMonth; $day++) {
+                                    $class = ($day == $currentDay) ? 'calendar-date today' : 'calendar-date';
+                                    echo '<div class="' . $class . '">' . $day . '</div>';
+                                }
+
+                                // Calculate and display next month's spillover days
+                                $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth); // 42 = 6 rows * 7 days
+                                for ($i = 1; $i <= $nextMonthDays; $i++) {
+                                    echo '<div class="calendar-date other-month">' . $i . '</div>';
+                                }
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="upcoming-appointments">
+                        <h3>Upcoming Appointments</h3>
+                        <div class="appointments-content">
+                            <?php
+                            $upcomingAppointments = $database->query("
+                                SELECT
+                                    appointment.appoid,
+                                    procedures.procedure_name,
+                                    appointment.appodate,
+                                    appointment.appointment_time,
+                                    patient.pname as patient_name
+                                FROM appointment
+                                INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
+                                INNER JOIN patient ON appointment.pid = patient.pid
+                                WHERE
+                                    appointment.docid = '$userid'
+                                    AND appointment.status = 'appointment'
+                                    AND appointment.appodate >= '$today'
+                                ORDER BY appointment.appodate ASC
+                                LIMIT 3;
+                            ");
+
+                            if ($upcomingAppointments->num_rows > 0) {
+                                while ($appointment = $upcomingAppointments->fetch_assoc()) {
+                                    echo '<div class="appointment-item">
+                                        <h4 class="appointment-type">' . htmlspecialchars($appointment['patient_name']) . '</h4>
+                                        <p class="appointment-date">' . htmlspecialchars($appointment['procedure_name']) . '</p>
+                                        <p class="appointment-date">' .
+                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                            ' • ' .
+                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                        '</p>
+                                    </div>';
+                                }
+                            } else {
+                                echo '<div class="no-appointments">
+                                    <p>No upcoming appointments scheduled</p>
+                                </div>';
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        function openAddPopup() {
-            document.getElementById('addPopup').style.display = 'block';
+        // Function to clear search and redirect
+        function clearSearch() {
+            window.location.href = 'patient.php';
         }
 
+        // Search input event listener
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const clearBtn = document.querySelector('.clear-btn');
 
-        function closeAddPopup() {
-            document.getElementById('addPopup').style.display = 'none';
-        }
-        window.onload = function() {
-            <?php if(isset($_GET['action']) && $_GET['action'] == 'view'): ?>
-            document.getElementById('popup1').style.display = 'flex';
-            <?php endif; ?>
-        };
-        document.addEventListener('click', function(e) {
-            if(e.target.classList.contains('close')) {
-                e.target.closest('.overlay').style.display = 'none';
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    clearSearch();
+                });
             }
         });
+
+        // Show popup if URL has any action parameter
+        document.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
+
+            if (action === 'view') {
+                const popup = document.getElementById('popup1');
+                if (popup) {
+                    popup.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                }
+            }
+
+            // Close button functionality
+            const closeButtons = document.querySelectorAll('.close');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const overlay = this.closest('.overlay');
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                        document.body.style.overflow = '';
+                        // Remove the parameters from URL and reload
+                        const url = new URL(window.location);
+                        url.searchParams.delete('action');
+                        url.searchParams.delete('id');
+                        window.location.href = url.toString();
+                    }
+                });
+            });
+
+            // Close popup when clicking outside of it
+            const overlays = document.querySelectorAll('.overlay');
+            overlays.forEach(overlay => {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        this.style.display = 'none';
+                        document.body.style.overflow = '';
+                        // Remove the parameters from URL and reload
+                        const url = new URL(window.location);
+                        url.searchParams.delete('action');
+                        url.searchParams.delete('id');
+                        window.location.href = url.toString();
+                    }
+                });
+            });
+        });
     </script>
-
-
 </body>
 </html>
-

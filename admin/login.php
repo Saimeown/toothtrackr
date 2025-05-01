@@ -51,15 +51,23 @@
 
             // Only check if the user type is admin
             if ($utype == 'a') {
-                $checker = $database->query("SELECT * FROM admin WHERE aemail='$email' AND apassword='$password'");
+                $checker = $database->query("SELECT * FROM admin WHERE aemail='$email'");
                 
                 if ($checker->num_rows == 1) {
-                    // Admin dashboard
-                    $_SESSION['user'] = $email;
-                    $_SESSION['usertype'] = 'a';
-                    header('location: dashboard.php');
+                    $admin = $checker->fetch_assoc();
+                    
+                    // Verify the hashed password
+                    if (password_verify($password, $admin['apassword'])) {
+                        // Admin dashboard
+                        $_SESSION['user'] = $email;
+                        $_SESSION['usertype'] = 'a';
+                        header('location: dashboard.php');
+                        exit();
+                    } else {
+                        $error = "Wrong credentials: Invalid email or password.";
+                    }
                 } else {
-                    $error = "Wrong credentials: Invalid email or password.";
+                    $error = "No admin account found for this email.";
                 }
             } else {
                 $error = "Access denied: Admins only.";
@@ -67,49 +75,44 @@
         } else {
             $error = "No account found for this email.";
         }
-
     }
     ?>
-         <nav>
+    <nav>
         <ul class="sidebar">
             <li onclick=hideSidebar()><a href="#"><img src="../Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
             <li><a href="../ToothTrackr.php"><img src="../Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
             <li><a href="../ToothTrackr.php">Home</a></li>
-            <!--<li><a href="#">About</a></li>-->
             <li><a href="../ToothTrackr.php#services">Services</a></li>
             <li><a href="../ToothTrackr.php#contact">Contact</a></li>
             <li><a href="signup.php">Sign up</a></li>
             <li><a href="login.php">Login</a></li>
         </ul>
         <ul>
-            <li><a href="../ToothTrackr.php"><img src="../Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a>
-            </li>
+            <li><a href="../ToothTrackr.php"><img src="../Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
             <li class="hideOnMobile"><a href="../ToothTrackr.php">Home</a></li>
-            <!--<li class="hideOnMobile"><a href="#">About</a></li> -->
             <li class="hideOnMobile"><a href="../ToothTrackr.php#services">Services</a></li>
             <li class="hideOnMobile"><a href="../ToothTrackr.php#contact">Contact</a></li>
             <li class="hideOnMobile"><a href="signup.php" class="reg-btn">Sign up</a></li>
             <li class="hideOnMobile"><a href="login.php" class="log-btn">Login</a></li>
-            <li class="menu-button" onclick=showSidebar()><a href="#"><img src="../Media/Icon/Black/navbar.png"
-                        class="navbar-logo" alt="Navigation Bar"></a></li>
+            <li class="menu-button" onclick=showSidebar()><a href="#"><img src="../Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
         </ul>
     </nav>
-        <script>
-            function showSidebar() {
-                const sidebar = document.querySelector('.sidebar')
-                sidebar.style.display = 'flex'
-            }
-            function hideSidebar() {
-                const sidebar = document.querySelector('.sidebar')
-                sidebar.style.display = 'none'
-            }
-        </script>
-        <div class="login-container">
-            <div class="inside-container">
-                <span class="login-logo"><img src="../Media/Icon/SDMC Logo.png"></span>
-                <span class="login-header">Log in</span>
-                <span class="login-header-admin">Songco Dental and Medical Clinic</span>
-                <form action="" method="POST">
+    <script>
+        function showSidebar() {
+            const sidebar = document.querySelector('.sidebar')
+            sidebar.style.display = 'flex'
+        }
+        function hideSidebar() {
+            const sidebar = document.querySelector('.sidebar')
+            sidebar.style.display = 'none'
+        }
+    </script>
+    <div class="login-container">
+        <div class="inside-container">
+            <span class="login-logo"><img src="../Media/Icon/SDMC Logo.png"></span>
+            <span class="login-header">Log in</span>
+            <span class="login-header-admin">Songco Dental and Medical Clinic</span>
+            <form action="" method="POST">
                 <label for="email">Email</label>
                 <input type="email" id="useremail" name="useremail" placeholder="Enter your email" required>
                 <label for="password">Password</label>
@@ -122,11 +125,10 @@
                     ?>
                 </div>
                 <input type="submit" value="Log in" class="login-btn">
-                <label for="" class="bottom-text">Log in as <a href="../dentist/login.php"
-                    class="signup-link">Dentist</a></label>
+                <label for="" class="bottom-text">Forgot password? <a href="forgot-password.php" class="signup-link">Reset here</a></label>
+                <label for="" class="bottom-text">Log in as <a href="../dentist/login.php" class="signup-link">Dentist</a></label>
             </form>
-            </div>
         </div>
-
-    </body>
+    </div>
+</body>
 </html>

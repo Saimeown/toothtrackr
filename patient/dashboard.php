@@ -15,102 +15,18 @@
         rel="stylesheet">
     <title>Dashboard - ToothTrackr</title>
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
-    <style>
-        .announcement-photo {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            background-color: white;
-            border: 3px solid #84b6e4;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Notification styles */
-        .notification-container {
-            position: relative;
-            display: flex;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #ff4757;
-            color: white;
-            border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 12px;
-        }
-        
-        .notification-dropdown {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: white;
-            min-width: 300px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            z-index: 1000;
-            border-radius: 8px;
-            max-height: 400px;
-            overflow-y: auto;
-            height: 500px;
-            margin-top: 500px;
-        }
-        
-        .notification-dropdown.show {
-            display: block;
-        }
-        
-        .notification-header {
-            padding: 12px 16px;
-            background-color: #f1f7fe;
-            border-bottom: 1px solid #ddd;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .notification-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .notification-item:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .notification-item.unread {
-            background-color: #f1f7fe;
-        }
-        
-        .notification-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .notification-time {
-            font-size: 12px;
-            color: #777;
-        }
-        
-        .mark-all-read {
-            color: #3a86ff;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .no-notifications {
-            padding: 16px;
-            text-align: center;
-            color: #777;
-        }
-    </style>
 </head>
-
+<style>
+        .announcement-photo {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        background-color: white;
+        border: 3px solid #84b6e4;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+</style>
 <?php
 date_default_timezone_set('Asia/Singapore');
 session_start();

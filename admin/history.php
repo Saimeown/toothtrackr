@@ -20,6 +20,7 @@ if (isset($_GET['ajax'])) {
     $statusFilter = $_GET['status'] ?? 'all';
     $sortOrder = in_array($_GET['sort'] ?? 'DESC', ['ASC', 'DESC']) ? $_GET['sort'] : 'DESC';
 
+    $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
     // Query setup
     switch ($type) {
         case 'appointments':
@@ -35,35 +36,89 @@ if (isset($_GET['ajax'])) {
                     ) a
                     LEFT JOIN patient p ON a.pid = p.pid
                     LEFT JOIN doctor d ON a.docid = d.docid
-                    LEFT JOIN procedures pr ON a.procedure_id = pr.procedure_id"; 
+                    LEFT JOIN procedures pr ON a.procedure_id = pr.procedure_id";
             
+            $where = [];
             if ($statusFilter !== 'all') {
-                $baseQuery .= " WHERE a.status = '" . $database->real_escape_string($statusFilter) . "'";
+                $where[] = "a.status = '" . $database->real_escape_string($statusFilter) . "'";
+            }
+            if (!empty($searchTerm)) {
+                $searchTerm = $database->real_escape_string($searchTerm);
+                $where[] = "(p.pname LIKE '%$searchTerm%' OR d.docname LIKE '%$searchTerm%' OR pr.procedure_name LIKE '%$searchTerm%')";
+            }
+            if (!empty($where)) {
+                $baseQuery .= " WHERE " . implode(" AND ", $where);
             }
             
-            // Corrected countQuery
+            // Similar modifications for countQuery
             $countQuery = "SELECT COUNT(*) FROM (
-                SELECT status FROM appointment WHERE status = 'completed'
-                UNION ALL
-                SELECT status FROM appointment_archive WHERE status IN ('cancelled', 'rejected')
-            ) AS combined";
+                SELECT a.appoid FROM appointment a
+                LEFT JOIN patient p ON a.pid = p.pid
+                LEFT JOIN doctor d ON a.docid = d.docid
+                LEFT JOIN procedures pr ON a.procedure_id = pr.procedure_id
+                WHERE a.status = 'completed'";
             
-            if ($statusFilter !== 'all') {
-                $countQuery .= " WHERE status = '" . $database->real_escape_string($statusFilter) . "'";
+            if (!empty($searchTerm)) {
+                $countQuery .= " AND (p.pname LIKE '%$searchTerm%' OR d.docname LIKE '%$searchTerm%' OR pr.procedure_name LIKE '%$searchTerm%')";
             }
+            
+            $countQuery .= " UNION ALL
+                SELECT a.appoid FROM appointment_archive a
+                LEFT JOIN patient p ON a.pid = p.pid
+                LEFT JOIN doctor d ON a.docid = d.docid
+                LEFT JOIN procedures pr ON a.procedure_id = pr.procedure_id
+                WHERE a.status IN ('cancelled', 'rejected')";
+            
+            if (!empty($searchTerm)) {
+                $countQuery .= " AND (p.pname LIKE '%$searchTerm%' OR d.docname LIKE '%$searchTerm%' OR pr.procedure_name LIKE '%$searchTerm%')";
+            }
+            
+            $countQuery .= ") AS combined";
             
             $orderColumn = 'a.appodate';
             break;
         
         case 'dentists':
-            $baseQuery = "SELECT * FROM doctor" . ($statusFilter !== 'all' ? " WHERE status = '" . $database->real_escape_string($statusFilter) . "'" : "");
+            $baseQuery = "SELECT * FROM doctor";
+            $where = [];
+            if ($statusFilter !== 'all') {
+                $where[] = "status = '" . $database->real_escape_string($statusFilter) . "'";
+            }
+            if (!empty($searchTerm)) {
+                $searchTerm = $database->real_escape_string($searchTerm);
+                $where[] = "docname LIKE '%$searchTerm%'";
+            }
+            if (!empty($where)) {
+                $baseQuery .= " WHERE " . implode(" AND ", $where);
+            }
+            
             $countQuery = "SELECT COUNT(*) FROM doctor";
+            if (!empty($where)) {
+                $countQuery .= " WHERE " . implode(" AND ", $where);
+            }
+            
             $orderColumn = 'docid';
             break;
         
         case 'patients':
-            $baseQuery = "SELECT * FROM patient" . ($statusFilter !== 'all' ? " WHERE status = '" . $database->real_escape_string($statusFilter) . "'" : "");
+            $baseQuery = "SELECT * FROM patient";
+            $where = [];
+            if ($statusFilter !== 'all') {
+                $where[] = "status = '" . $database->real_escape_string($statusFilter) . "'";
+            }
+            if (!empty($searchTerm)) {
+                $searchTerm = $database->real_escape_string($searchTerm);
+                $where[] = "pname LIKE '%$searchTerm%'";
+            }
+            if (!empty($where)) {
+                $baseQuery .= " WHERE " . implode(" AND ", $where);
+            }
+            
             $countQuery = "SELECT COUNT(*) FROM patient";
+            if (!empty($where)) {
+                $countQuery .= " WHERE " . implode(" AND ", $where);
+            }
+            
             $orderColumn = 'pid';
             break;
     }
@@ -75,7 +130,7 @@ if (isset($_GET['ajax'])) {
     $result = $database->query("$baseQuery ORDER BY $orderColumn $sortOrder LIMIT $rowsPerPage OFFSET $offset");
 
     // Build HTML
-    $html = '<table class="sub-table"><thead><tr><th class="checkbox-column"><input type="checkbox" class="select-all"></th>';
+    $html = '<table class="table"><thead><tr><th class="checkbox-column"><input type="checkbox" class="select-all"></th>';
     switch ($type) {
         case 'appointments': $html .= '<th>Patient</th><th>Dentist</th><th>Procedure</th><th>Date & Time</th><th>Status</th>'; break;
         case 'dentists': $html .= '<th>Name</th><th>Email</th><th>Phone</th><th>Status</th>'; break;
@@ -92,7 +147,7 @@ if (isset($_GET['ajax'])) {
             case 'appointments':
                 $html .= '<td>' . htmlspecialchars($row['pname'] ?? 'N/A') . '</td>'
                       . '<td>' . htmlspecialchars($row['docname'] ?? 'N/A') . '</td>'
-                      . '<td>' . htmlspecialchars($row['procedure_name'] ?? 'N/A') . '</td>' // Add procedure name
+                      . '<td>' . htmlspecialchars($row['procedure_name'] ?? 'N/A') . '</td>'
                       . '<td>' . htmlspecialchars(($row['appodate'] ?? '') . ' @ ' . substr($row['appointment_time'] ?? '', 0, 5)) . '</td>'
                       . '<td>' . ucfirst($row['status']) . '</td>';
                 break;
@@ -114,7 +169,7 @@ if (isset($_GET['ajax'])) {
     }
     $html .= '</tbody></table>';
 
-    // In your PHP code where you generate the pagination HTML, replace with:
+    // Pagination HTML
     $pagination = '<div class="pagination"><span class="pagination-label">' . 
     (($page - 1) * $rowsPerPage + 1) . ' - ' . min($page * $rowsPerPage, $total) . 
     ' of ' . $total . '</span><div class="pagination-buttons">' .
@@ -127,6 +182,7 @@ if (isset($_GET['ajax'])) {
     echo json_encode(['html' => $html, 'pagination' => $pagination]);
     exit();
 }
+
 $appointment_count = $database->query(
     "SELECT COUNT(*) FROM (
         SELECT appoid FROM appointment WHERE status = 'completed'
@@ -137,7 +193,6 @@ $appointment_count = $database->query(
 
 $dentist_count = $database->query("SELECT COUNT(*) FROM doctor")->fetch_row()[0];
 $patient_count = $database->query("SELECT COUNT(*) FROM patient")->fetch_row()[0];
-// Regular page rendering continues below...
 ?>
 
 <!DOCTYPE html>
@@ -150,733 +205,323 @@ $patient_count = $database->query("SELECT COUNT(*) FROM patient")->fetch_row()[0
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
-
     <title>Archive - ToothTrackr</title>
-    <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
-        .tab-container { margin: 20px 0; }
-        .tab-button { 
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .main-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .clear-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        /* Tab styles */
+        .tab-container {
+            margin: 20px 0;
+        }
+        
+        .tab-button {
             padding: 10px 20px;
             background: #f0f0f0;
             border: none;
             cursor: pointer;
             margin-right: 5px;
             border-radius: 5px;
+            transition: all 0.2s ease;
+            font-weight: 600;
+            color: #303030;
         }
-        .tab-button.active { 
-            background:rgb(24, 17, 128); 
+        
+        .tab-button:hover {
+            background: #e0e0e0;
+        }
+        
+        .tab-button.active {
+            background: #6491bb;
             color: white;
         }
-        .table-controls { 
-            margin: 15px 0;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
+        
+        .tab-content {
+            display: none;
         }
-        .table-wrapper {
-            overflow-x: auto;
+        
+        .tab-content.active {
+            display: block;
         }
-        .dash-body table {
+        
+        /* Table styles */
+        .table-container {
+            max-height: 600px; /* Or whatever height you prefer */
+            overflow-y: auto;
+            position: relative;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #6491bb;
+        }
+        
+        /* Ensure table takes full width */
+        .table {
             width: 100%;
             border-collapse: collapse;
-            margin: 10px 0;
-            table-layout: fixed;
         }
-        .dash-body table th,
-        .dash-body table td {
+        
+        .table th, .table td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
-            overflow: hidden; /* Prevents content from overflowing */
-            text-overflow: ellipsis; /* Adds ellipsis for overflowed text */
-            white-space: nowrap; /* Prevents text from wrapping */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: all 0.2s ease;
         }
-        /* Checkbox column width */
-        .dash-body table th.checkbox-column,
-        .dash-body table td.checkbox-column {
-            width: 30px; /* Fixed width for the checkbox column */
+        
+        .table th {
+            background-color: #84b6e4;
+            color: white;
+            position: sticky;
+            top: 0;
         }
-
-        /* Appointments table (6 columns) */
-        .dash-body #appointments-table th:nth-child(2),
-        .dash-body #appointments-table td:nth-child(2) {
-            width: 20%; /* Width for the Patient column */
+        
+        .table tr:hover td {
+            background-color:#dae8f6;
         }
-
-        .dash-body #appointments-table th:nth-child(3),
-        .dash-body #appointments-table td:nth-child(3) {
-            width: 20%; /* Width for the Dentist column */
-        }
-
-        .dash-body #appointments-table th:nth-child(4),
-        .dash-body #appointments-table td:nth-child(4) {
-            width: 20%; /* Width for the Procedure column */
-        }
-
-        .dash-body #appointments-table th:nth-child(5),
-        .dash-body #appointments-table td:nth-child(5) {
-            width: 20%; /* Width for the Date & Time column */
-        }
-
-        .dash-body #appointments-table th:nth-child(6),
-        .dash-body #appointments-table td:nth-child(6) {
-            width: 20%; /* Width for the Status column */
-        }
-
-        /* Dentists table (5 columns) */
-        .dash-body #dentists-table th:nth-child(2),
-        .dash-body #dentists-table td:nth-child(2) {
-            width: 25%; /* Width for the Name column */
-        }
-
-        .dash-body #dentists-table th:nth-child(3),
-        .dash-body #dentists-table td:nth-child(3) {
-            width: 25%; /* Width for the Email column */
-        }
-
-        .dash-body #dentists-table th:nth-child(4),
-        .dash-body #dentists-table td:nth-child(4) {
-            width: 25%; /* Width for the Phone column */
-        }
-
-        .dash-body #dentists-table th:nth-child(5),
-        .dash-body #dentists-table td:nth-child(5) {
-            width: 25%; /* Width for the Status column */
-        }
-
-        /* Patients table (6 columns) */
-        .dash-body #patients-table th:nth-child(2),
-        .dash-body #patients-table td:nth-child(2) {
-            width: 20%; /* Width for the Name column */
-        }
-
-        .dash-body #patients-table th:nth-child(3),
-        .dash-body #patients-table td:nth-child(3) {
-            width: 20%; /* Width for the Email column */
-        }
-
-        .dash-body #patients-table th:nth-child(4),
-        .dash-body #patients-table td:nth-child(4) {
-            width: 20%; /* Width for the Address column */
-        }
-
-        .dash-body #patients-table th:nth-child(5),
-        .dash-body #patients-table td:nth-child(5) {
-            width: 20%; /* Width for the Birthdate column */
-        }
-
-        .dash-body #patients-table th:nth-child(6),
-        .dash-body #patients-table td:nth-child(6) {
-            width: 20%; /* Width for the Status column */
-        }
-
-        th {
-            background-color: #f8f9fa;
-            position: relative;
-        }
-        .status-filter {
-            padding: 5px;
-            margin-left: 10px;
-        }
+        
+        /* Checkbox column */
         .checkbox-column {
             width: 30px;
         }
+        
+        /* Status badges */
+        .table td:last-child[data-status="completed"],
+        .table td:last-child[data-status="active"] {
+            color: #28a745;
+        }
+        
+        .table td:last-child[data-status="cancelled"],
+        .table td:last-child[data-status="rejected"],
+        .table td:last-child[data-status="inactive"] {
+            color: #dc3545;
+        }
+        
+        /* Pagination */
         .pagination {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-top: 15px;
-            padding-bottom: 50px;
         }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .loading-message { padding: 20px; text-align: center; }
-        .dash-body {
-            padding-left: 40px;
-            padding-right: 40px;
-            padding-top: 35px;
-        }
-        .archive-header-text{
-            font-size: 40px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 700;
-            color:rgb(14, 23, 78);
-        }
+        
         .pagination-label {
             padding-right: 20px;
             color: #666;
             font-size: 14px;
         }
-        .prev-btn {
-            margin-right: 10px;
-        }
+        
         .pagination-buttons {
-    display: flex;
-    gap: 8px;
-}
-
-/* Update your pagination button styles */
-.pagination-button {
-    background: none;
-    border: none;
-    color:rgb(28, 20, 106);
-    font-size: 25px;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-}
-
-.pagination-button:hover:not(:disabled) {
-    background-color: #f0f0f0;
-}
-
-.pagination-button:disabled {
-    color: #ccc;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
-.pagination-button.prev::before {
-    content: "←";
-    margin-right: 5px;
-}
-
-.pagination-button.next::after {
-    content: "→";
-    margin-left: 5px;
-}
-
-/* Add this to your existing styles */
-.dash-body table th {
-    background-color: #f8f9fa;
-    font-weight: 600;
-    color: #495057;
-}
-
-.dash-body table tr:hover td {
-    background-color: #f8f9fa;
-}
-
-.tab-button {
-    padding: 10px 20px;
-    background: #f0f0f0;
-    border: none;
-    cursor: pointer;
-    margin-right: 5px;
-    border-radius: 5px;
-    transition: all 0.2s ease;
-    font-weight: 500;
-}
-
-.tab-button:hover {
-    background: #e0e0e0;
-}
-
-.tab-button.active {
-    background:rgb(34, 16, 97);
-    color: white;
-}
-
-.status-filter, .rows-per-page {
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #ced4da;
-    background-color: white;
-}
-
-.generate-pdf {
-    background-color:rgb(36, 28, 107);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.generate-pdf:hover {
-    background-color:rgb(40, 33, 136);
-}
-       
-/* Add this for loading animation */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loading-message {
-    padding: 20px;
-    text-align: center;
-    color: #666;
-}
-
-.loading-message::before {
-    content: "";
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(0,0,0,0.1);
-    border-radius: 50%;
-    border-top-color: #007bff;
-    animation: spin 1s ease-in-out infinite;
-    margin-right: 10px;
-    vertical-align: middle;
-}
-/* Alternative minimalist style */
-.sort-btn {
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 14px;
-    cursor: pointer;
-    padding: 6px 10px;
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.sort-btn:after {
-    content: "";
-    display: inline-block;
-    width: 0;
-    height: 0;
-    margin-left: 5px;
-    vertical-align: middle;
-}
-
-.sort-btn[data-order="DESC"]:after {
-    border-top: 4px solid;
-    border-right: 4px solid transparent;
-    border-left: 4px solid transparent;
-}
-
-.sort-btn[data-order="ASC"]:after {
-    border-bottom: 4px solid;
-    border-right: 4px solid transparent;
-    border-left: 4px solid transparent;
-}
-
-.sort-btn.active {
-    color: rgb(36, 28, 107);
-    font-weight: 600;
-}
-
-.sort-btn.active:after {
-    border-top-color: rgb(36, 28, 107);
-    border-bottom-color: rgb(36, 28, 107);
-}
-/* Table Container */
-.table-wrapper {
-    overflow-x: auto;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    margin: 20px 0;
-}
-
-/* Table Styling */
-.sub-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 14px;
-    background: white;
-}
-
-/* Table Header */
-.sub-table thead th {
-    background-color: rgb(36, 28, 107);
-    color: white;
-    padding: 15px;
-    text-align: left;
-    font-weight: 500;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.sub-table thead th:first-child {
-    border-top-left-radius: 8px;
-}
-
-.sub-table thead th:last-child {
-    border-top-right-radius: 8px;
-}
-
-/* Table Cells */
-.sub-table td {
-    padding: 15px;
-    border-bottom: 1px solid #f0f0f0;
-    vertical-align: middle;
-}
-
-/* Zebra Striping */
-.sub-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-/* Hover Effect */
-.sub-table tbody tr:hover {
-    background-color: #f0f4ff;
-    transition: background-color 0.2s ease;
-}
-
-/* Status Badges */
-.sub-table td:last-child {
-    font-weight: 500;
-}
-
-.sub-table td:last-child[data-status="completed"] {
-    color: #28a745;
-}
-
-.sub-table td:last-child[data-status="cancelled"],
-.sub-table td:last-child[data-status="rejected"],
-.sub-table td:last-child[data-status="inactive"] {
-    color: #dc3545;
-}
-
-.sub-table td:last-child[data-status="active"] {
-    color: #28a745;
-}
-
-/* Checkbox Styling */
-.checkbox-column {
-    width: 40px;
-    text-align: center;
-}
-
-.select-all, .row-checkbox {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .sub-table {
-        font-size: 13px;
-    }
-    
-    .sub-table th, 
-    .sub-table td {
-        padding: 10px 8px;
-    }
-}
-
-/* Date & Time Column */
-.sub-table td:nth-last-child(2) {
-    white-space: nowrap;
-}
-
-/* Status Column */
-.sub-table td:last-child {
-    text-transform: capitalize;
-}
-
-/* Table Controls */
-.table-controls {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 20px 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    align-items: center;
-}
-
-/* Loading Animation */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loading-message {
-    padding: 40px;
-    text-align: center;
-    color: #666;
-    font-size: 16px;
-}
-
-.loading-message::before {
-    content: "";
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    border: 3px solid rgba(36, 28, 107, 0.1);
-    border-radius: 50%;
-    border-top-color: rgb(36, 28, 107);
-    animation: spin 1s ease-in-out infinite;
-    margin-right: 10px;
-    vertical-align: middle;
-}
-/* Update these styles in your CSS */
-.sub-table thead th {
-    background-color: rgb(36, 28, 107);
-    color: white;
-    padding: 10px 15px; /* Reduced from 15px to 10px vertically */
-    text-align: left;
-    font-weight: 500;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.sub-table td {
-    padding: 10px 15px; /* Reduced from 15px to 10px vertically */
-    border-bottom: 1px solid #f0f0f0;
-    vertical-align: middle;
-}
-
-/* Reduce space above table */
-.table-wrapper {
-    overflow-x: auto;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    margin: 10px 0; /* Reduced from 20px */
-}
-
-/* Reduce space below table */
-.tab-content {
-    margin-bottom: 10px; /* Add this to reduce space after table */
-}
-.pagination {
-    margin-bottom: 20px;
-    padding-bottom: 20px;
-}
-/* Replace your existing .table-controls and pagination styles with these */
-.table-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 15px 0;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.table-controls-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.table-controls-right {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-left: auto;
-}
-
-.pagination {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0; /* Remove any default margins */
-}
-
-.pagination-label {
-    padding-right: 10px;
-    color: #666;
-    font-size: 14px;
-    white-space: nowrap;
-}
-
-.pagination-buttons {
-    display: flex;
-    gap: 5px;
-}
-
-.generate-pdf {
-    margin-left: 15px; /* Add space between pagination and button */
-}
-/* Update these styles */
-.table-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 15px 0;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.table-controls-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.table-controls-right {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-}
-
-.generate-pdf {
-    margin-left: 15px;
-    order: 1; /* Ensures it stays after the dropdown */
-}
-
-.pagination {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-}
-
-/* Adjust the status filter and rows per page dropdowns */
-.status-filter, .rows-per-page {
-    margin-right: 0; /* Remove right margin since we're using gap */
-}
-/* Update these styles to reduce spacing */
-.table-wrapper {
-    margin: 5px 0; /* Reduced from 10px */
-}
-
-.tab-content {
-    margin-bottom: 5px; /* Reduced from 10px */
-}
-
-.table-controls {
-    margin: 10px 0; /* Reduced from 15px */
-    padding: 10px; /* Reduced from 15px */
-}
-
-.pagination {
-    margin: 5px 0; /* Reduced spacing */
-    padding: 0; /* Remove padding */
-}
-
-/* Make the table controls more compact */
-.table-controls-left {
-    gap: 10px; /* Reduced from 15px */
-}
-
-.table-controls-right {
-    gap: 8px; /* Reduced from 15px */
-}
-
-/* Adjust the generate PDF button */
-.generate-pdf {
-    margin-left: 10px; /* Reduced from 15px */
-    padding: 6px 12px; /* Slightly smaller */
-}
-
-/* Make status filter and rows per page more compact */
-.status-filter, .rows-per-page {
-    padding: 6px 10px; /* Reduced from 8px 12px */
-}
-
-/* Reduce checkbox label spacing */
-label > input[type="checkbox"] {
-    margin-right: 5px;
-}
-/* Ultra-compact table controls */
-.table-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 5px 0; /* Reduced from 10px */
-    padding: 8px; /* Reduced from 10px */
-    background: #f8f9fa;
-    border-radius: 6px; /* Slightly smaller */
-    flex-wrap: wrap;
-    gap: 8px; /* Reduced from 10px */
-}
-
-.table-controls-left {
-    display: flex;
-    align-items: center;
-    gap: 8px; /* Reduced from 10px */
-    flex-wrap: wrap;
-}
-
-.table-controls-right {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-}
-
-/* Super compact table spacing */
-.table-wrapper {
-    overflow-x: auto;
-    border-radius: 6px;
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05); /* Lighter shadow */
-    margin: 3px 0; /* Ultra tight */
-}
-
-/* Minimal pagination */
-.pagination {
-    display: flex;
-    align-items: center;
-    gap: 5px; /* Tight spacing */
-    margin: 0;
-    padding: 0;
-}
-
-.pagination-label {
-    padding-right: 8px; /* Reduced */
-    font-size: 13px; /* Slightly smaller */
-}
-
-/* Tiny buttons and inputs */
-.generate-pdf {
-    padding: 5px 10px; /* Very compact */
-    font-size: 13px; /* Smaller text */
-    margin-left: 8px; /* Tight spacing */
-}
-
-.status-filter, .rows-per-page {
-    padding: 5px 8px; /* Very tight */
-    font-size: 13px; /* Smaller */
-}
-
-.sort-btn {
-    padding: 4px 8px; /* Minimal */
-    font-size: 13px; /* Smaller */
-}
-
-/* Compact table cells */
-.sub-table thead th {
-    padding: 8px 12px; /* Tight */
-}
-
-.sub-table td {
-    padding: 8px 12px; /* Tight */
-}
-
-/* Tiny checkboxes */
-.checkbox-column {
-    width: 25px; /* Smaller */
-}
-
-.select-all, .row-checkbox {
-    width: 14px; /* Smaller */
-    height: 14px; /* Smaller */
-}
-
-/* Minimal loading message */
-.loading-message {
-    padding: 10px; /* Reduced */
-    font-size: 14px; /* Smaller */
-}
-.content-area {
-    padding-left: 30px;
-    margin-right: 30px;
-}
+            display: flex;
+            gap: 8px;
+        }
+        
+        .pagination-button {
+            background: none;
+            border: none;
+            color: #84b6e4;
+            font-size: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .pagination-button:hover:not(:disabled) {
+            background-color: #f0f0f0;
+        }
+        
+        .pagination-button:disabled {
+            color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        .pagination-button.prev::before {
+            content: "←";
+            margin-right: 5px;
+        }
+        
+        .pagination-button.next::after {
+            content: "→";
+            margin-left: 5px;
+        }
+        
+        /* Table controls */
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .table-controls-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .table-controls-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-left: auto;
+        }
+        
+        .status-filter, .rows-per-page {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+            background-color: white;
+        }
+        
+        .generate-pdf {
+            background-color: #84b6e4;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .generate-pdf:hover {
+            background-color:rgb(154, 196, 237);
+        }
+        
+        /* Loading animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-message {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .loading-message::before {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        /* Sort buttons */
+        .sort-btn {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 6px 10px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .sort-btn:after {
+            content: "";
+            display: inline-block;
+            width: 0;
+            height: 0;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        
+        .sort-btn[data-order="DESC"]:after {
+            border-top: 4px solid;
+            border-right: 4px solid transparent;
+            border-left: 4px solid transparent;
+        }
+        
+        .sort-btn[data-order="ASC"]:after {
+            border-bottom: 4px solid;
+            border-right: 4px solid transparent;
+            border-left: 4px solid transparent;
+        }
+        
+        .sort-btn.active {
+            color: #6491bb;
+            font-weight: 600;
+        }
+        
+        .sort-btn.active:after {
+            border-top-color: #6491bb;
+            border-bottom-color: #6491bb;
+        }
+        
+        /* Header styles */
+        .announcements-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .table-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .table-controls-right {
+                margin-left: 0;
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="nav-container">
+    <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
@@ -940,157 +585,304 @@ label > input[type="checkbox"] {
         </div>
 
         <div class="content-area">
-        <div class="tab-container">
-        <p class="archive-header-text">Archive</p>
-            <button class="tab-button active" data-type="appointments">Appointments (<?= $appointment_count ?>)</button>
-            <button class="tab-button" data-type="dentists">Dentists (<?= $dentist_count ?>)</button>
-            <button class="tab-button" data-type="patients">Patients (<?= $patient_count ?>)</button>
-        </div>
-
-        <div id="appointments-content" class="tab-content active">
-    <div class="table-controls">
-        <div class="table-controls-left">
-            <label><input type="checkbox" class="select-all" data-type="appointments"> Select All</label>
-            <select class="rows-per-page" data-type="appointments">
-                <option value="10">10 rows</option>
-                <option value="20">20 rows</option>
-                <option value="50">50 rows</option>
-                <option value="100">100 rows</option>
-            </select>
-            <div class="sort-controls">
-                <button class="sort-btn active" data-type="appointments" data-order="DESC">Newest</button>
-                <button class="sort-btn" data-type="appointments" data-order="ASC">Oldest</button>
-            </div>
-            <select class="status-filter" data-type="appointments">
-                <option value="all">All</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="rejected">Rejected</option>
-            </select>
-            <button class="generate-pdf btn-primary" data-type="appointments">Generate PDF</button>
-        </div>
-        
-        <div class="table-controls-right">
-            <div class="pagination" id="appointments-pagination"></div>
-        </div>
-    </div>
-    
-    <div class="table-wrapper" id="appointments-table"><div class="loading-message"></div></div>
-</div>
-
-        <!-- Dentists Tab -->
-        <div id="dentists-content" class="tab-content">
-            <div class="table-controls">
-                <label><input type="checkbox" class="select-all" data-type="dentists"> Select All</label>
-                <select class="rows-per-page" data-type="dentists">
-                    <option value="10">10 rows</option>
-                    <option value="20">20 rows</option>
-                    <option value="50">50 rows</option>
-                    <option value="100">100 rows</option>
-                </select>
-                <div class="sort-controls">
-                    <button class="sort-btn active" data-type="dentists" data-order="DESC">↑ Newest</button>
-                    <button class="sort-btn" data-type="dentists" data-order="ASC">↓ Oldest</button>
+            <div class="container">
+                <!-- Search bar -->
+                <div class="search-container">
+                    <div style="display: flex; width: 100%; position: relative;">
+                        <input type="search" id="searchInput" class="search-input"
+                            placeholder="Search by patient name, dentist name or procedure">
+                        <button type="button" class="clear-btn">×</button>
+                    </div>
                 </div>
-                <select class="status-filter" data-type="dentists">
-                    <option value="all">All</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-                <button class="generate-pdf btn-primary" data-type="dentists">Generate PDF</button>
-            </div>
-            <div class="table-wrapper" id="dentists-table"><div class="loading-message">Loading dentists...</div></div>
-            <div class="pagination" id="dentists-pagination"></div>
-        </div>
 
-        <!-- Patients Tab -->
-        <div id="patients-content" class="tab-content">
-            <div class="table-controls">
-                <label><input type="checkbox" class="select-all" data-type="patients"> Select All</label>
-                <select class="rows-per-page" data-type="patients">
-                    <option value="10">10 rows</option>
-                    <option value="20">20 rows</option>
-                    <option value="50">50 rows</option>
-                    <option value="100">100 rows</option>
-                </select>
-                <div class="sort-controls">
-                    <button class="sort-btn active" data-type="patients" data-order="DESC">↑ Newest</button>
-                    <button class="sort-btn" data-type="patients" data-order="ASC">↓ Oldest</button>
+                <!-- Tab container -->
+                <div class="tab-container">
+                    <h3 class="announcements-title">Archive</h3>
+                    <button class="tab-button active" data-type="appointments">Appointments (<?= $appointment_count ?>)</button>
+                    <button class="tab-button" data-type="dentists">Dentists (<?= $dentist_count ?>)</button>
+                    <button class="tab-button" data-type="patients">Patients (<?= $patient_count ?>)</button>
                 </div>
-                <select class="status-filter" data-type="patients">
-                    <option value="all">All</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-                <button class="generate-pdf btn-primary" data-type="patients">Generate PDF</button>
+
+                <!-- Appointments Tab -->
+                <div id="appointments-content" class="tab-content active">
+                    <div class="table-controls">
+                        <div class="table-controls-left">
+                            <label><input type="checkbox" class="select-all" data-type="appointments"> Select All</label>
+                            <select class="rows-per-page" data-type="appointments">
+                                <option value="10">10 rows</option>
+                                <option value="20">20 rows</option>
+                                <option value="50">50 rows</option>
+                                <option value="100">100 rows</option>
+                            </select>
+                            <div class="sort-controls">
+                                <button class="sort-btn active" data-type="appointments" data-order="DESC">Newest</button>
+                                <button class="sort-btn" data-type="appointments" data-order="ASC">Oldest</button>
+                            </div>
+                            <select class="status-filter" data-type="appointments">
+                                <option value="all">All</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                            <button class="generate-pdf btn-primary" data-type="appointments">Generate PDF</button>
+                        </div>
+                        
+                        <div class="table-controls-right">
+                            <div class="pagination" id="appointments-pagination"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container" id="appointments-table"><div class="loading-message"></div></div>
+                </div>
+
+                <!-- Dentists Tab -->
+                <div id="dentists-content" class="tab-content">
+                    <div class="table-controls">
+                        <div class="table-controls-left">
+                            <label><input type="checkbox" class="select-all" data-type="dentists"> Select All</label>
+                            <select class="rows-per-page" data-type="dentists">
+                                <option value="10">10 rows</option>
+                                <option value="20">20 rows</option>
+                                <option value="50">50 rows</option>
+                                <option value="100">100 rows</option>
+                            </select>
+                            <div class="sort-controls">
+                                <button class="sort-btn active" data-type="dentists" data-order="DESC">Newest</button>
+                                <button class="sort-btn" data-type="dentists" data-order="ASC">Oldest</button>
+                            </div>
+                            <select class="status-filter" data-type="dentists">
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            <button class="generate-pdf btn-primary" data-type="dentists">Generate PDF</button>
+                        </div>
+                        
+                        <div class="table-controls-right">
+                            <div class="pagination" id="dentists-pagination"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container" id="dentists-table"><div class="loading-message">Loading dentists...</div></div>
+                </div>
+
+                <!-- Patients Tab -->
+                <div id="patients-content" class="tab-content">
+                    <div class="table-controls">
+                        <div class="table-controls-left">
+                            <label><input type="checkbox" class="select-all" data-type="patients"> Select All</label>
+                            <select class="rows-per-page" data-type="patients">
+                                <option value="10">10 rows</option>
+                                <option value="20">20 rows</option>
+                                <option value="50">50 rows</option>
+                                <option value="100">100 rows</option>
+                            </select>
+                            <div class="sort-controls">
+                                <button class="sort-btn active" data-type="patients" data-order="DESC">Newest</button>
+                                <button class="sort-btn" data-type="patients" data-order="ASC">Oldest</button>
+                            </div>
+                            <select class="status-filter" data-type="patients">
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                            <button class="generate-pdf btn-primary" data-type="patients">Generate PDF</button>
+                        </div>
+                        
+                        <div class="table-controls-right">
+                            <div class="pagination" id="patients-pagination"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container" id="patients-table"><div class="loading-message">Loading patients...</div></div>
+                </div>
             </div>
-            <div class="table-wrapper" id="patients-table"><div class="loading-message">Loading patients...</div></div>
-            <div class="pagination" id="patients-pagination"></div>
         </div>
     </div>
-    </div>
-
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-    $(document).ready(function() {
-        let currentTab = 'appointments';
+$(document).ready(function() {
+    let currentTab = 'appointments';
+    
+    // Load table data function
+    function loadTableData(type, page = 1) {
+        const rowsPerPage = $(`.rows-per-page[data-type="${type}"]`).val();
+        const statusFilter = $(`.status-filter[data-type="${type}"]`).val();
+        const sortOrder = $(`#${type}-content .sort-btn.active`).data('order') || 'DESC';
+        const searchTerm = $('#searchInput').val();
         
-        function loadTableData(type, page = 1) {
-            const rowsPerPage = $(`#${type}-content .rows-per-page`).val();
-            const statusFilter = $(`#${type}-content .status-filter`).val();
-            const sortOrder = $(`#${type}-content .sort-btn.active`).data('order') || 'DESC';
-
-            $.ajax({
-            url: 'history.php',  // Changed from 'history_handler.php'
-            method: 'GET',       // Changed from POST to GET
+        $.ajax({
+            url: window.location.pathname,
+            method: 'GET',
+            dataType: 'json',
             data: { 
-                ajax: 1,         // Add this parameter
+                ajax: 1,
                 type: type,
                 page: page,
                 rows_per_page: rowsPerPage,
                 status: statusFilter,
-                sort: sortOrder 
+                sort: sortOrder,
+                search: searchTerm
             },
-                beforeSend: () => $(`#${type}-table`).html('<div class="loading-message">Loading...</div>'),
-                success: (response) => {
+            beforeSend: function() {
+                $(`#${type}-table`).html('<div class="loading-message">Loading...</div>');
+            },
+            success: function(response) {
+                if (response && response.html && response.pagination) {
                     $(`#${type}-table`).html(response.html);
                     $(`#${type}-pagination`).html(response.pagination);
                     
-                    // Update pagination buttons
+                    // Rebind pagination buttons
                     $(`#${type}-pagination button`).off('click').on('click', function() {
-                        loadTableData(type, $(this).data('page'));
+                        if (!$(this).is(':disabled')) {
+                            loadTableData(type, $(this).data('page'));
+                        }
                     });
-                },
-                error: () => $(`#${type}-table`).html('<div class="error">Error loading data</div>')
-            });
+                    
+                    // Rebind select all checkbox
+                    bindSelectAll(type);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+                $(`#${type}-table`).html('<div class="error-message">Error loading data. Please try again.</div>');
+            }
+        });
+    }
+    
+    // Bind select all functionality
+    function bindSelectAll(type) {
+        $(`#${type}-content .select-all`).off('change').on('change', function() {
+            const isChecked = $(this).is(':checked');
+            $(`#${type}-table .row-checkbox`).prop('checked', isChecked);
+        });
+        
+        // Bind individual row checkboxes to update select-all status
+        $(`#${type}-table`).on('change', '.row-checkbox', function() {
+            const allChecked = $(`#${type}-table .row-checkbox`).length === 
+                              $(`#${type}-table .row-checkbox:checked`).length;
+            $(`#${type}-content .select-all`).prop('checked', allChecked);
+        });
+    }
+    
+    // Generate PDF function
+    function generatePDF(type) {
+        const selectedIds = [];
+        $(`#${type}-table .row-checkbox:checked`).each(function() {
+            selectedIds.push($(this).val());
+        });
+        
+        if (selectedIds.length === 0) {
+            alert('Please select at least one item to generate PDF');
+            return;
         }
-
-        // Initial load
-        loadTableData(currentTab);
-
-        // Tab switching
-        $('.tab-button').click(function() {
-            $('.tab-button, .tab-content').removeClass('active');
-            $(this).addClass('active');
-            currentTab = $(this).data('type');
-            $(`#${currentTab}-content`).addClass('active');
+        
+        // Here you would typically make an AJAX call to your PDF generation endpoint
+        // For now, we'll just show a confirmation
+        console.log('Generating PDF for', type, 'with IDs:', selectedIds);
+        alert(`Preparing to generate PDF for ${selectedIds.length} selected ${type}`);
+        
+        // Example of how you might implement the actual PDF generation:
+        /*
+        $.ajax({
+            url: 'generate_pdf.php',
+            method: 'POST',
+            data: {
+                type: type,
+                ids: selectedIds
+            },
+            success: function(response) {
+                // Handle the PDF download
+                window.open(response.pdf_url, '_blank');
+            },
+            error: function() {
+                alert('Error generating PDF');
+            }
+        });
+        */
+    }
+    
+    // Initial load
+    loadTableData(currentTab);
+    
+    // Tab switching
+    $('.tab-button').on('click', function() {
+        const type = $(this).data('type');
+        currentTab = type;
+        
+        // Update UI
+        $('.tab-button').removeClass('active');
+        $(this).addClass('active');
+        $('.tab-content').removeClass('active');
+        $(`#${type}-content`).addClass('active');
+        
+        // Update placeholder based on tab
+        updateSearchPlaceholder(type);
+        
+        // Load data for this tab
+        loadTableData(type);
+    });
+    
+    // Update search placeholder based on tab
+    function updateSearchPlaceholder(type) {
+        let placeholder = '';
+        switch(type) {
+            case 'appointments':
+                placeholder = 'Search by patient name, dentist name or procedure';
+                break;
+            case 'dentists':
+                placeholder = 'Search by dentist name';
+                break;
+            case 'patients':
+                placeholder = 'Search by patient name';
+                break;
+        }
+        $('#searchInput').attr('placeholder', placeholder);
+    }
+    
+    // Search functionality
+    $('#searchInput').on('keyup', function(e) {
+        if (e.key === 'Enter') {
             loadTableData(currentTab);
-        });
-
-        // Control handlers
-        $(document).on('change', '.rows-per-page, .status-filter', function() {
-            loadTableData($(this).data('type'));
-        });
-
-        $(document).on('click', '.sort-btn', function() {
-            const type = $(this).data('type');
-            $(`#${type}-content .sort-btn`).removeClass('active');
-            $(this).addClass('active');
-            loadTableData(type);
-        });
-
-        $(document).on('click', '.select-all', function() {
+        }
+    });
+    
+    // Clear search
+    function clearSearch() {
+        $('#searchInput').val('');
+        loadTableData(currentTab);
+    }
+    
+    $(document).on('click', '.clear-btn', clearSearch);
+    
+    // Rows per page change
+    $('.rows-per-page').on('change', function() {
+        const type = $(this).data('type');
+        loadTableData(type);
+    });
+    
+    // Status filter change
+    $('.status-filter').on('change', function() {
+        const type = $(this).data('type');
+        loadTableData(type);
+    });
+    
+    // Sort buttons
+    $(document).on('click', '.sort-btn', function() {
+        const type = $(this).data('type');
+        const sortOrder = $(this).data('order');
+        
+        // Remove active class from all sort buttons in this tab
+        $(`#${type}-content .sort-btn`).removeClass('active');
+        
+        // Add active class to clicked button
+        $(this).addClass('active');
+        
+        // Reload data with new sort order
+        loadTableData(type);
+    });
+    $(document).on('click', '.select-all', function() {
             const type = $(this).data('type');
             const checked = $(this).prop('checked');
             $(`#${type}-table .row-checkbox`).prop('checked', checked);
@@ -1117,7 +909,8 @@ label > input[type="checkbox"] {
             $('body').append(form).submit();
             form.submit();
         });
-    });
+});
+
     </script>
 </body>
 </html>

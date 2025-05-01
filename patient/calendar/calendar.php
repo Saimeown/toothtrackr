@@ -20,88 +20,6 @@
     <title>Calendar - ToothTrackr</title>
     <link rel="icon" href="../../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
-        /* Notification styles */
-        .notification-container {
-            position: relative;
-            display: flex;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #ff4757;
-            color: white;
-            border-radius: 50%;
-            padding: 2px 6px;
-            font-size: 12px;
-        }
-        
-        .notification-dropdown {
-            display: none;
-            position: absolute;
-            right: 0;
-            background-color: white;
-            min-width: 300px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            z-index: 1000;
-            border-radius: 8px;
-            max-height: 400px;
-            overflow-y: auto;
-            height: 500px;
-            margin-top: 500px;
-        }
-        
-        .notification-dropdown.show {
-            display: block;
-        }
-        
-        .notification-header {
-            padding: 12px 16px;
-            background-color: #f1f7fe;
-            border-bottom: 1px solid #ddd;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .notification-item {
-            padding: 12px 16px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        
-        .notification-item:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .notification-item.unread {
-            background-color: #f1f7fe;
-        }
-        
-        .notification-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .notification-time {
-            font-size: 12px;
-            color: #777;
-        }
-        
-        .mark-all-read {
-            color: #3a86ff;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .no-notifications {
-            padding: 16px;
-            text-align: center;
-            color: #777;
-        }
         .select-dentist-message {
             display: flex;
             justify-content: center;
@@ -413,49 +331,32 @@
                     </div>
 
                     <div class="calendar-section">
-                        <!-- Dynamic Calendar -->
-                        <div class="calendar-container">
+                        <!-- Color Guide -->
+                        <div class="color-guide-container">
                             <div class="calendar-header">
-                                <h3 class="calendar-month">
-                                    <?php
-                                    // Get current month name dynamically
-                                    echo strtoupper(date('F', strtotime('this month')));
-                                    ?>
-                                </h3>
+                                <h3 class="color-guide-title">Color guide</h3>
                             </div>
-                            <div class="calendar-grid">
-                                <div class="calendar-day">S</div>
-                                <div class="calendar-day">M</div>
-                                <div class="calendar-day">T</div>
-                                <div class="calendar-day">W</div>
-                                <div class="calendar-day">T</div>
-                                <div class="calendar-day">F</div>
-                                <div class="calendar-day">S</div>
-
-                                <?php
-                                // Calculate the previous month's spillover days
-                                $previousMonthDays = $firstDayOfMonth - 1;
-                                $previousMonthLastDay = date('t', strtotime('last month'));
-                                $startDay = $previousMonthLastDay - $previousMonthDays + 1;
-
-                                // Display previous month's spillover days
-                                for ($i = 0; $i < $previousMonthDays; $i++) {
-                                    echo '<div class="calendar-date other-month">' . $startDay . '</div>';
-                                    $startDay++;
-                                }
-
-                                // Display current month's days
-                                for ($day = 1; $day <= $daysInMonth; $day++) {
-                                    $class = ($day == $currentDay) ? 'calendar-date today' : 'calendar-date';
-                                    echo '<div class="' . $class . '">' . $day . '</div>';
-                                }
-
-                                // Calculate and display next month's spillover days
-                                $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth); // 42 = 6 rows * 7 days
-                                for ($i = 1; $i <= $nextMonthDays; $i++) {
-                                    echo '<div class="calendar-date other-month">' . $i . '</div>';
-                                }
-                                ?>
+                            <div class="color-legend">
+                                <div class="color-item">
+                                    <div class="color-circle" style="background-color: #F7BD01;"></div>
+                                    <div class="color-label">Booking</div>
+                                </div>
+                                <div class="color-item">
+                                    <div class="color-circle" style="background-color: #0e8923;"></div>
+                                    <div class="color-label">Appointment</div>
+                                </div>
+                                <div class="color-item">
+                                    <div class="color-circle" style="background-color: #F94144;"></div>
+                                    <div class="color-label">No Service</div>
+                                </div>
+                                <div class="color-item">
+                                    <div class="color-circle" style="background-color: #F9A15D;"></div>
+                                    <div class="color-label">Timeslot Taken</div>
+                                </div>
+                                <div class="color-item">
+                                    <div class="color-circle" style="background-color: #BBBBBB;"></div>
+                                    <div class="color-label">Completed</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -587,7 +488,7 @@
                         success: function (response) {
                             var result = response.data;
                             $.each(result, function (i, item) {
-                                var eventColor = (item.status === 'appointment') ? '#6BB663' : item.color;
+                                var eventColor = (item.status === 'appointment') ? '#0e8923' : item.color;
                                 events.push({
                                     event_id: result[i].appointment_id,
                                     title: result[i].title,

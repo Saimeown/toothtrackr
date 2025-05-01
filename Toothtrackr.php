@@ -1,7 +1,7 @@
-
 <?php
 // Start session
 session_start();
+
 
 // Check if any user is logged in and redirect them
 if (isset($_SESSION["user"]) && isset($_SESSION["usertype"])) {
@@ -19,12 +19,19 @@ if (isset($_SESSION["user"]) && isset($_SESSION["usertype"])) {
 }
 require_once 'connection.php';
 
+
 $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_assoc();
 
 
 
+
+
+
 ?>
+
+
 <!DOCTYPE html>
+
 
 <head>
     <meta charset="UTF-8">
@@ -42,17 +49,22 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/assets/owl.theme.default.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/owl.carousel@2.3.4/dist/owl.carousel.min.js"></script>
 
+
 </head>
+
 
 <body>
     <header>
         <nav>
             <ul class="sidebar">
-                <li onclick=hideSidebar()><a href="#"><img src="Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
-                <li><a href="#"><img src="Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
+                <li onclick=hideSidebar()><a href="#"><img src="Media/Icon/Black/navbar.png" class="navbar-logo"
+                            alt="Navigation Bar"></a></li>
+                <li><a href="#"><img src="Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a>
+                </li>
                 <li><a href="#">Home</a></li>
                 <!--<li><a href="#">About</a></li>-->
                 <li><a href="#services">Services</a></li>
@@ -61,7 +73,8 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                 <li><a href="patient/login.php">Login</a></li>
             </ul>
             <ul>
-                <li><a href="#"><img src="Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
+                <li><a href="#"><img src="Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a>
+                </li>
                 <li class="hideOnMobile"><a href="#">Home</a></li>
                 <!--<li class="hideOnMobile"><a href="#">About</a></li> -->
                 <li class="hideOnMobile"><a href="#services">Services</a></li>
@@ -72,6 +85,7 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                             class="navbar-logo" alt="Navigation Bar"></a></li>
             </ul>
         </nav>
+
 
     </header>
     <main>
@@ -95,6 +109,7 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                             </div>
                         </div>
                     </div>
+
 
                     <!-- Right Image Column -->
                     <div class="col-md-6 h-100">
@@ -160,13 +175,15 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                 <h2 class="title">ABOUT SDMC</h2>
             </div>
             <div>
-                
+               
             </div>
         </section>
 -->
 
+
         <?php
         require_once 'connection.php';
+
 
         function getServices($database)
         {
@@ -174,17 +191,21 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
             $query = "SELECT * FROM services";
             $result = $database->query($query);
 
+
             if ($result) {
                 while ($row = $result->fetch_assoc()) {
                     $services[] = $row;
                 }
             }
 
+
             return $services;
         }
 
+
         $services = getServices($database);
         ?>
+
 
         <section id="services">
             <div>
@@ -214,6 +235,8 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
         </section>
 
 
+
+
         <section id="contact">
             <div>
                 <h2 class="title">CONTACT US</h2>
@@ -230,9 +253,12 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                     <h1 class="contact-title"><?= htmlspecialchars($clinic_info['clinic_name']) ?></h1>
                     <p class="clinic-services"><?= htmlspecialchars($clinic_info['clinic_description']) ?></p>
                     <div class="contact-info">
-                        <p><img src="Media/Icon/Blue/address.png" alt="Location" class="contact-icon"> <?= htmlspecialchars($clinic_info['address']) ?></p>
-                        <p><img src="Media/Icon/Blue/phone.png" alt="Phone" class="contact-icon"> <?= htmlspecialchars($clinic_info['phone']) ?></p>
-                        <p><img src="Media/Icon/Blue/mail.png" alt="Email" class="contact-icon"> <?= htmlspecialchars($clinic_info['email']) ?></p>
+                        <p><img src="Media/Icon/Blue/address.png" alt="Location" class="contact-icon">
+                            <?= htmlspecialchars($clinic_info['address']) ?></p>
+                        <p><img src="Media/Icon/Blue/phone.png" alt="Phone" class="contact-icon">
+                            <?= htmlspecialchars($clinic_info['phone']) ?></p>
+                        <p><img src="Media/Icon/Blue/mail.png" alt="Email" class="contact-icon">
+                            <?= htmlspecialchars($clinic_info['email']) ?></p>
                     </div>
                 </div>
             </div>
@@ -242,17 +268,19 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
         <div class="footer-container">
             <div class="footer-row">
                 <div class="footer-column">
-                    <p class="copyright-text">Copyright &copy; 2025 All Rights Reserved</p>
+                    <p class="copyright-text">Copyright &copy; 2025 ToothTrackr | All Rights Reserved.</p>
                 </div>
                 <div class="footer-column">
                     <ul class="social-icons">
                         <li>
-                            <a class="facebook" href="<?= htmlspecialchars($clinic_info['facebook_url']) ?>" target="_blank" rel="noopener noreferrer">
+                            <a class="facebook" href="<?= htmlspecialchars($clinic_info['facebook_url']) ?>"
+                                target="_blank" rel="noopener noreferrer">
                                 <i class="fab fa-facebook"></i>
                             </a>
                         </li>
                         <li>
-                            <a class="instagram" href="<?= htmlspecialchars($clinic_info['instagram_url']) ?>" target="_blank" rel="noopener noreferrer">
+                            <a class="instagram" href="<?= htmlspecialchars($clinic_info['instagram_url']) ?>"
+                                target="_blank" rel="noopener noreferrer">
                                 <i class="fab fa-instagram"></i>
                             </a>
                         </li>
@@ -263,8 +291,47 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                     <a href="admin/login.php" class="admin-btn">Login as Admin</a>
                 </div>
             </div>
+            <!-- Add this HTML code to the footer section before the closing </footer> tag -->
+            <div class="help-button-container">
+                <button id="helpButton" class="help-button" aria-label="Contact Developer Support">
+                    ?
+                </button>
+            </div>
         </div>
     </footer>
+    <!-- Add this HTML for the popup modal after the footer -->
+    <div id="helpModal" class="help-modal">
+        <div class="help-modal-content">
+            <span class="close-modal">&times;</span>
+            <div class="help-modal-header">
+                <img src="Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo" class="modal-logo">
+                <h3>Talk to Developer Support</h3>
+            </div>
+            <div class="help-modal-body">
+            <div class="contact-info-modal">
+                <h4>Contact Us</h4>
+                <p><img src="Media/Icon/Blue/mail.png" alt="Email" class="contact-modal-icon"> toothtrackr@gmail.com</p>
+                <p><img src="Media/Icon/Blue/phone.png" alt="Phone" class="contact-modal-icon"> +63 994 803 5127</p>
+            </div>
+                <form id="bugReportForm" class="bug-report-form" onsubmit="redirectToGmail(event)">
+                    <h4>Report an Issue</h4>
+                    <div class="form-group">
+                        <label for="reporterName">Your Name</label>
+                        <input type="text" id="reporterName" name="reporterName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reporterEmail">Email</label>
+                        <input type="email" id="reporterEmail" name="reporterEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="issueDescription">Describe the Issue</label>
+                        <textarea id="issueDescription" name="issueDescription" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-report">Submit Report</button>
+                </form>
+            </div>
+        </div>
+    </div>
 
 
     <!--Navbar-->
@@ -279,6 +346,7 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
         }
     </script>
 
+
     <!--Services-->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -287,13 +355,16 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
             const nextButton = document.querySelector('.carousel-button.next');
             const cardWidth = document.querySelector('.card').offsetWidth + 20; // card width + gap
 
+
             prevButton.addEventListener('click', function () {
                 carousel.scrollBy({ left: -cardWidth * 3, behavior: 'smooth' });
             });
 
+
             nextButton.addEventListener('click', function () {
                 carousel.scrollBy({ left: cardWidth * 3, behavior: 'smooth' });
             });
+
 
             // Hide buttons when at extremes
             function updateButtonVisibility() {
@@ -301,8 +372,10 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                 nextButton.style.display = carousel.scrollLeft >= carousel.scrollWidth - carousel.clientWidth - 10 ? 'none' : 'flex';
             }
 
+
             carousel.addEventListener('scroll', updateButtonVisibility);
             updateButtonVisibility(); // Initial check
+
 
             // Handle window resize
             window.addEventListener('resize', function () {
@@ -311,8 +384,10 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
             });
         });
 
+
         let isDragging = false;
         let startX, scrollLeft;
+
 
         carousel.addEventListener('mousedown', (e) => {
             isDragging = true;
@@ -321,15 +396,18 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
             carousel.style.cursor = 'grabbing';
         });
 
+
         carousel.addEventListener('mouseleave', () => {
             isDragging = false;
             carousel.style.cursor = 'grab';
         });
 
+
         carousel.addEventListener('mouseup', () => {
             isDragging = false;
             carousel.style.cursor = 'grab';
         });
+
 
         carousel.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
@@ -339,6 +417,80 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
             carousel.scrollLeft = scrollLeft - walk;
         });
     </script>
+
+
+    <!-- Add this JavaScript code before the closing </body> tag -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const helpButton = document.getElementById('helpButton');
+            const helpModal = document.getElementById('helpModal');
+            const closeModal = document.querySelector('.close-modal');
+           
+            // Open modal when help button is clicked
+            helpButton.addEventListener('click', function() {
+                helpModal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.width = '100%';
+            });
+           
+            // Close modal when X is clicked
+            closeModal.addEventListener('click', function() {
+                helpModal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                document.body.style.position = 'static';
+            });
+           
+            // Close modal when clicking outside the modal content
+            window.addEventListener('click', function(event) {
+                if (event.target === helpModal) {
+                    helpModal.style.display = 'none';
+                    document.body.style.overflow = 'auto';
+                    document.body.style.position = 'static';
+                }
+            });
+        });
+    </script>
+    <script>
+        function redirectToGmail(event) {
+    event.preventDefault();
+   
+    // Get form values
+    const name = document.getElementById('reporterName').value;
+    const email = document.getElementById('reporterEmail').value;
+    const issue = document.getElementById('issueDescription').value;
+   
+    // Validate inputs
+    if (!name || !email || !issue) {
+        alert('Please fill all required fields.');
+        return;
+    }
+   
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+    }
+   
+    // Create mailto link
+    const subject = `Bug Report from ${name}`;
+    const body = `${issue}`;
+   
+    const mailtoLink = `https://mail.google.com/mail/?view=cm&fs=1&to=toothtrackr@gmail.com&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+   
+    // Open Gmail compose window
+    window.open(mailtoLink, '_blank');
+   
+    // Show confirmation and reset form
+    alert('Thank you! Please send your report through the Gmail window that opened.');
+    document.getElementById('bugReportForm').reset();
+   
+    // Close modal
+    document.getElementById('helpModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    document.body.style.position = 'static';
+}
+    </script>
 </body>
+
 
 </html>

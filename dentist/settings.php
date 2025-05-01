@@ -1,3 +1,32 @@
+<?php
+session_start();
+
+if (!isset($_SESSION["user"]) || $_SESSION['usertype'] != 'd') {
+    header("location: login.php");
+    exit();
+}
+
+include("../connection.php");
+date_default_timezone_set('Asia/Singapore');
+
+$useremail = $_SESSION["user"];
+$userrow = $database->query("SELECT * FROM doctor WHERE docemail='$useremail'");
+$userfetch = $userrow->fetch_assoc();
+$userid = $userfetch["docid"];
+$username = $userfetch["docname"];
+
+$today = date('Y-m-d');
+$currentMonth = date('F');
+$currentYear = date('Y');
+$daysInMonth = date('t');
+$firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
+$currentDay = date('j');
+
+// Get counts for sidebar
+$patientrow = $database->query("SELECT COUNT(DISTINCT pid) FROM appointment WHERE docid='$userid'");
+$appointmentrow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='booking' AND docid='$userid'");
+$schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='appointment' AND docid='$userid'");
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -9,60 +38,207 @@
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
-
     <title>Settings - ToothTrackr</title>
-    <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
+    <link rel="icon" href="../Media/Icon/white-icon/white-ToothTrackr_Logo.png" type="image/png">
     <style>
-        .dashbord-tables {
-            animation: transitionIn-Y-over 0.5s;
-        }
-
-        .filter-container {
-            animation: transitionIn-X 0.5s;
+        .popup {
+            animation: transitionIn-Y-bottom 0.5s;
         }
 
         .sub-table {
             animation: transitionIn-Y-bottom 0.5s;
         }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .popup {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            color: #333;
+            text-decoration: none;
+            cursor: pointer;
+            z-index: 10000;
+        }
+
+        .profile-img-small {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: #45a049;
+        }
+
+        .btn-secondary {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background-color: #da190b;
+        }
+
+        .right-sidebar {
+            width: 320px;
+        }
+
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat-box {
+            height: 100%;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #f44336;
+            color: white;
+            border-radius: 50%;
+            padding: 3px 6px;
+            font-size: 12px;
+        }
+
+        .stat-icon {
+            position: relative;
+        }
+
+        .settings-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .settings-tab {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .settings-tab:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .settings-icon {
+            width: 40px;
+            height: 40px;
+            background-color: #e3f2fd;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-icon img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .settings-content h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .settings-content p {
+            margin: 5px 0 0;
+            font-size: 14px;
+            color: #777;
+        }
     </style>
-
-
 </head>
 
 <body>
-    <?php
-
-    //learn from w3schools.com
-    
-    session_start();
-
-    if (isset($_SESSION["user"])) {
-        if (($_SESSION["user"]) == "" or $_SESSION['usertype'] != 'd') {
-            header("location: login.php");
-        } else {
-            $useremail = $_SESSION["user"];
-        }
-
-    } else {
-        header("location: login.php");
-    }
-
-
-    //import database
-    include("../connection.php");
-    $userrow = $database->query("select * from doctor where docemail='$useremail'");
-    $userfetch = $userrow->fetch_assoc();
-    $userid = $userfetch["docid"];
-    $username = $userfetch["docname"];
-    $userphoto = $userfetch["photo"];
-    $photopath = $userphoto ? "../admin/uploads/" . $userphoto : "../Media/Icon/Blue/profile.png";
-
-
-    //echo $userid;
-    //echo $username;
-    
-    ?>
-    <div class="nav-container">
+    <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
@@ -126,404 +302,375 @@
             </div>
         </div>
 
-        <div class="content-area" style="margin-top: 15px">
-            <table border="0" width="100%" style=" border-spacing: 0;margin:0;padding:0;">
+        <div class="content-area">
+            <div class="content">
+                <div class="main-section">
+                    <!-- header -->
+                    <div class="announcements-header">
+                        <h3 class="announcements-title">Settings</h3>
+                    </div>
 
-                <tr>
+                    <div class="settings-container">
+                        <a href="javascript:void(0);" onclick="showOverlay('editOverlay')" class="non-style-link">
+                            <div class="settings-tab">
+                                <div class="settings-icon">
+                                    <img src="../Media/Icon/Blue/edit.png" alt="Edit">
+                                </div>
+                                <div class="settings-content">
+                                    <h3>Account Settings</h3>
+                                    <p>Edit your Account Details & Change Password</p>
+                                </div>
+                            </div>
+                        </a>
 
-                    <td width="13%">
-                        <a href="settings.php"><button class="login-btn btn-primary-soft btn btn-icon-back"
-                                style="padding-top:11px;padding-bottom:11px;margin-left:20px;width:125px">
-                                <font class="tn-in-text">Back</font>
-                            </button></a>
-                    </td>
-                    <td>
-                        <p style="font-size: 23px;padding-left:12px;font-weight: 600;">Settings</p>
+                        <a href="javascript:void(0);" onclick="showOverlay('viewOverlay')" class="non-style-link">
+                            <div class="settings-tab">
+                                <div class="settings-icon">
+                                    <img src="../Media/Icon/Blue/view.png" alt="View">
+                                </div>
+                                <div class="settings-content">
+                                    <h3>View Account Details</h3>
+                                    <p>View Personal information About Your Account</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
 
-                    </td>
+                <!-- Right sidebar section -->
+                <div class="right-sidebar">
+                    <div class="stats-section">
+                        <div class="stats-container">
+                            <!-- First row -->
+                            <a href="patient.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php echo $patientrow->fetch_row()[0] ?? 0; ?></h1>
+                                        <p class="stat-label">My Patients</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/care.png" alt="Patients Icon">
+                                    </div>
+                                </div>
+                            </a>
 
-                    <td width="15%">
-                        <p style="font-size: 14px;color: rgb(119, 119, 119);padding: 0;margin: 0;text-align: right;">
-                            Today's Date
-                        </p>
-                        <p class="heading-sub12" style="padding: 0;margin: 0;">
+                            <!-- Second row -->
+                            <a href="booking.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php
+                                        $bookingCount = $appointmentrow->fetch_row()[0] ?? 0;
+                                        echo $bookingCount;
+                                        ?></h1>
+                                        <p class="stat-label">Bookings</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
+                                        <?php if ($bookingCount > 0): ?>
+                                            <span class="notification-badge"><?php echo $bookingCount; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <a href="appointment.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php
+                                        $appointmentCount = $schedulerow->fetch_row()[0] ?? 0;
+                                        echo $appointmentCount;
+                                        ?></h1>
+                                        <p class="stat-label">Appointments</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
+                                        <?php if ($appointmentCount > 0): ?>
+                                            <span class="notification-badge"><?php echo $appointmentCount; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="calendar-section">
+                        <!-- Dynamic Calendar -->
+                        <div class="calendar-container">
+                            <div class="calendar-header">
+                                <h3 class="calendar-month">
+                                    <?php
+                                    // Get current month name dynamically
+                                    echo strtoupper(date('F', strtotime('this month')));
+                                    ?>
+                                </h3>
+                            </div>
+                            <div class="calendar-grid">
+                                <div class="calendar-day">S</div>
+                                <div class="calendar-day">M</div>
+                                <div class="calendar-day">T</div>
+                                <div class="calendar-day">W</div>
+                                <div class="calendar-day">T</div>
+                                <div class="calendar-day">F</div>
+                                <div class="calendar-day">S</div>
+
+                                <?php
+                                // Calculate the previous month's spillover days
+                                $previousMonthDays = $firstDayOfMonth - 1;
+                                $previousMonthLastDay = date('t', strtotime('last month'));
+                                $startDay = $previousMonthLastDay - $previousMonthDays + 1;
+
+                                // Display previous month's spillover days
+                                for ($i = 0; $i < $previousMonthDays; $i++) {
+                                    echo '<div class="calendar-date other-month">' . $startDay . '</div>';
+                                    $startDay++;
+                                }
+
+                                // Display current month's days
+                                for ($day = 1; $day <= $daysInMonth; $day++) {
+                                    $class = ($day == $currentDay) ? 'calendar-date today' : 'calendar-date';
+                                    echo '<div class="' . $class . '">' . $day . '</div>';
+                                }
+
+                                // Calculate and display next month's spillover days
+                                $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth); // 42 = 6 rows * 7 days
+                                for ($i = 1; $i <= $nextMonthDays; $i++) {
+                                    echo '<div class="calendar-date other-month">' . $i . '</div>';
+                                }
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="upcoming-appointments">
+                        <h3>Upcoming Appointments</h3>
+                        <div class="appointments-content">
                             <?php
-                            date_default_timezone_set('Asia/Kolkata');
+                            $upcomingAppointments = $database->query("
+                                SELECT
+                                    appointment.appoid,
+                                    procedures.procedure_name,
+                                    appointment.appodate,
+                                    appointment.appointment_time,
+                                    patient.pname as patient_name
+                                FROM appointment
+                                INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
+                                INNER JOIN patient ON appointment.pid = patient.pid
+                                WHERE
+                                    appointment.docid = '$userid'
+                                    AND appointment.status = 'appointment'
+                                    AND appointment.appodate >= '$today'
+                                ORDER BY appointment.appodate ASC
+                                LIMIT 3;
+                            ");
 
-                            $today = date('Y-m-d');
-                            echo $today;
-
-
-                            $patientrow = $database->query("select  * from  patient;");
-                            $doctorrow = $database->query("select  * from  doctor;");
-                            $appointmentrow = $database->query("select  * from  appointment where appodate>='$today';");
-                            $schedulerow = $database->query("select  * from  schedule where scheduledate='$today';");
-
-
+                            if ($upcomingAppointments->num_rows > 0) {
+                                while ($appointment = $upcomingAppointments->fetch_assoc()) {
+                                    echo '<div class="appointment-item">
+                                        <h4 class="appointment-type">' . htmlspecialchars($appointment['patient_name']) . '</h4>
+                                        <p class="appointment-date">' . htmlspecialchars($appointment['procedure_name']) . '</p>
+                                        <p class="appointment-date">' .
+                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                            ' • ' .
+                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                        '</p>
+                                    </div>';
+                                }
+                            } else {
+                                echo '<div class="no-appointments">
+                                    <p>No upcoming appointments scheduled</p>
+                                </div>';
+                            }
                             ?>
-                        </p>
-                    </td>
-                    <td width="10%">
-                        <button class="btn-label"
-                            style="display: flex;justify-content: center;align-items: center;"><img
-                                src="../img/calendar.svg" width="100%"></button>
-                    </td>
-
-
-                </tr>
-                <tr>
-                    <td colspan="4">
-
-                        <center>
-                            <table class="filter-container" style="border: none;" border="0">
-                                <tr>
-                                    <td colspan="4">
-                                        <p style="font-size: 20px">&nbsp;</p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="width: 25%;">
-                                        <a href="?action=edit&id=<?php echo $userid ?>&error=0" class="non-style-link">
-                                            <div class="dashboard-items setting-tabs"
-                                                style="padding:20px;margin:auto;width:95%;display: flex">
-                                                <div class="btn-icon-back dashboard-icons-setting"
-                                                    style="background-image: url('../img/icons/doctors-hover.svg');">
-                                                </div>
-                                                <div>
-                                                    <div class="h1-dashboard">
-                                                        Account Settings &nbsp;
-
-                                                    </div><br>
-                                                    <div class="h3-dashboard" style="font-size: 15px;">
-                                                        Edit your Account Details & Change Password
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        </a>
-                                    </td>
-
-
-                                </tr>
-                                <tr>
-                                    <td colspan="4">
-                                        <p style="font-size: 5px">&nbsp;</p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="width: 25%;">
-                                        <a href="?action=view&id=<?php echo $userid ?>" class="non-style-link">
-                                            <div class="dashboard-items setting-tabs"
-                                                style="padding:20px;margin:auto;width:95%;display: flex;">
-                                                <div class="btn-icon-back dashboard-icons-setting "
-                                                    style="background-image: url('../img/icons/view-iceblue.svg');">
-                                                </div>
-                                                <div>
-                                                    <div class="h1-dashboard">
-                                                        View Account Details
-
-                                                    </div><br>
-                                                    <div class="h3-dashboard" style="font-size: 15px;">
-                                                        View Personal information About Your Account
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        </a>
-                                    </td>
-
-                                </tr>
-                                <tr>
-                                    <td colspan="4">
-                                        <p style="font-size: 5px">&nbsp;</p>
-                                    </td>
-                                </tr>
-                                <tr>
-
-
-                                </tr>
-                            </table>
-                        </center>
-                    </td>
-                </tr>
-
-            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <?php
-    if ($_GET) {
 
-        $id = $_GET["id"];
-        $action = $_GET["action"];
-        if ($action == 'drop') {
-            $nameget = $_GET["name"];
-            echo '
-            <div id="popup1" class="overlay">
-                    <div class="popup">
-                    <center>
-                        <h2>Are you sure?</h2>
-                        <a class="close" href="settings.php">&times;</a>
-                        <div class="content">
-                            You want to delete this record<br>(' . substr($nameget, 0, 40) . ').
-                            
-                        </div>
-                        <div style="display: flex;justify-content: center;">
-                        <a href="delete-dentist.php?id=' . $id . '" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"<font class="tn-in-text">&nbsp;Yes&nbsp;</font></button></a>&nbsp;&nbsp;&nbsp;
-                        <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;No&nbsp;&nbsp;</font></button></a>
-
-                        </div>
-                    </center>
-            </div>
-            </div>
-            ';
-        } elseif ($action == 'view') {
-            $sqlmain = "select * from doctor where docid='$id'";
-            $result = $database->query($sqlmain);
-            $row = $result->fetch_assoc();
-            $name = $row["docname"];
-            $email = $row["docemail"];
-
-            $tele = $row['doctel'];
-            echo '
-            <div id="popup1" class="overlay">
-                    <div class="popup">
-                    <center>
-                        <h2></h2>
-                        <a class="close" href="settings.php">&times;</a>
-                        <div class="content">
-                            Songco Dental Clinic<br>
-                            
-                        </div>
-                        <div style="display: flex;justify-content: center;">
-                        <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
-                        
-                            <tr>
-                                <td>
-                                    <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">View Details.</p><br><br>
-                                </td>
-                            </tr>
-                            
-                            <tr>
-                                
-                                <td class="label-td" colspan="2">
-                                    <label for="name" class="form-label">Name: </label>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">
-                                    ' . $name . '<br><br>
-                                </td>
-                                
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">
-                                    <label for="Email" class="form-label">Email: </label>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">
-                                ' . $email . '<br><br>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">
-                                    <label for="Tele" class="form-label">Telephone: </label>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">
-                                ' . $tele . '<br><br>
-                                </td>
-                            </tr>
-                            <tr>
-                            <td class="label-td" colspan="2">
-                            ' . $spcil_name . '<br><br>
+    <!-- View Account Popup -->
+    <div id="viewOverlay" class="overlay" style="display: none;">
+        <div class="popup">
+            <center>
+                <h2></h2>
+                <a class="close" href="javascript:void(0);" onclick="hideOverlay('viewOverlay')">&times;</a>
+                <div class="content" style="height: 0px;">
+                    Songco Dental Clinic<br>
+                </div>
+                <div style="display: flex;justify-content: center;">
+                    <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
+                        <tr>
+                            <td>
+                                <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">View Details.</p><br><br>
                             </td>
-                            </tr>
-                            <tr>
-                                <td colspan="2">
-                                    <a href="settings.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn" ></a>
-                                
-                                    
-                                </td>
-                
-                            </tr>
-                           
-
-                        </table>
-                        </div>
-                    </center>
-                    <br><br>
-            </div>
-            </div>
-            ';
-        } elseif ($action == 'edit') {
-            $sqlmain = "select * from doctor where docid='$id'";
-            $result = $database->query($sqlmain);
-            $row = $result->fetch_assoc();
-            $name = $row["docname"];
-            $email = $row["docemail"];
-            $tele = $row['doctel'];
-
-            $error_1 = $_GET["error"];
-            $errorlist = array(
-                '1' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;">Already have an account for this Email address.</label>',
-                '2' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;">Password Conformation Error! Reconform Password</label>',
-                '3' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;"></label>',
-                '4' => "",
-                '0' => '',
-
-            );
-
-            if ($error_1 != '4') {
-                echo '
-                    <div id="popup1" class="overlay">
-                            <div class="popup">
-                            <center>
-                            
-                                <a class="close" href="settings.php">&times;</a> 
-                                <div style="display: flex;justify-content: center;">
-                                <div class="abc">
-                                <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
-                                <tr>
-                                        <td class="label-td" colspan="2">' .
-                    $errorlist[$error_1]
-                    . '</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">Edit Dentist Details.</p>
-                                        Dentist ID : ' . $id . ' (Auto Generated)<br><br>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <form action="edit-doc.php" method="POST" class="add-new-form" enctype="multipart/form-data">
-                                            <label for="Email" class="form-label">Email: </label>
-                                            <input type="hidden" value="' . $id . '" name="id00">
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                        <input type="hidden" name="oldemail" value="' . $email . '" >
-                                        <input type="email" name="email" class="input-text" placeholder="Email Address" value="' . $email . '" required><br>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        
-                                        <td class="label-td" colspan="2">
-                                            <label for="name" class="form-label">Name: </label>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <input type="text" name="name" class="input-text" placeholder="Dentist Name" value="' . $name . '" required><br>
-                                        </td>
-                                        
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <label for="Tele" class="form-label">Telephone: </label>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <input type="tel" name="Tele" class="input-text" placeholder="Telephone Number" value="' . $tele . '" required><br>
-                                        </td>
-                                    </tr>
-                                    
-                                <tr>
-                <td class="label-td" colspan="2">
-                    <label for="photo" class="form-label">Profile Photo: </label>
-                </td>
-            </tr>
-            <tr>
-                <td class="label-td" colspan="2">
-                    <input type="file" name="photo" id="photo" class="input-text" accept="image/*">
-                    <br><br>
-                    ' . ( // PHP code starts here
-                    $currentPhoto = $row["photo"] ?? ''
-                    (
-                        $currentPhoto ?
-                        '<img src="../admin/uploads/' . $currentPhoto . '" alt="Current Photo" style="width: 100px; height: 100px; border-radius: 10%;">' :
-                        '<p>No photo uploaded.</p>'
-                    )
-                ) . '
-                </td>
-            </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <label for="password" class="form-label">Password: </label>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <input type="password" name="password" class="input-text" placeholder="Defind a Password" required><br>
-                                        </td>
-                                    </tr><tr>
-                                        <td class="label-td" colspan="2">
-                                            <label for="cpassword" class="form-label">Conform Password: </label>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="label-td" colspan="2">
-                                            <input type="password" name="cpassword" class="input-text" placeholder="Conform Password" required><br>
-                                        </td>
-                                    </tr>
-                                    
-                        
-                                    <tr>
-                                        <td colspan="2">
-                                            <input type="reset" value="Reset" class="login-btn btn-primary-soft btn" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                        
-                                            <input type="submit" value="Save" class="login-btn btn-primary btn">
-                                        </td>
-                        
-                                    </tr>
-                                
-                                    </form>
-                                    </tr>
-                                </table>
-                                </div>
-                                </div>
-                            </center>
-                            <br><br>
-                    </div>
-                    </div>
-                    ';
-            } else {
-                echo '
-                <div id="popup1" class="overlay">
-                        <div class="popup">
-                        <center>
-                        <br><br><br><br>
-                            <h2>Edit Successfully!</h2>
-                            <a class="close" href="settings.php">&times;</a>
-                            <div class="content">
-                                If You change your email also Please logout and login again with your new email
-                                
-                            </div>
-                            <div style="display: flex;justify-content: center;">
-                            
-                            <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;OK&nbsp;&nbsp;</font></button></a>
-                            <a href="logout.php" class="non-style-link"><button  class="btn-primary-soft btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;Log out&nbsp;&nbsp;</font></button></a>
-
-                            </div>
-                            <br><br>
-                        </center>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <label for="name" class="form-label">Name: </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <?php echo $username; ?><br><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <label for="Email" class="form-label">Email: </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <?php echo $useremail; ?><br><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <label for="Tele" class="form-label">Telephone: </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <?php echo $userfetch['doctel']; ?><br><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <button onclick="hideOverlay('viewOverlay')" class="login-btn btn-primary-soft btn">OK</button>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
+            </center>
+            <br><br>
+        </div>
+    </div>
+
+    <!-- Edit Account Popup -->
+    <div id="editOverlay" class="overlay" style="display: none;">
+        <div class="popup">
+            <center>
+                <a class="close" href="javascript:void(0);" onclick="hideOverlay('editOverlay')">&times;</a> 
+                <div style="display: flex;justify-content: center;">
+                    <div class="abc">
+                        <form action="edit-doc.php" method="POST" class="add-new-form" enctype="multipart/form-data">
+                            <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
+                                <tr>
+                                    <td>
+                                        <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">Edit Dentist Details.</p>
+                                        Dentist ID : <?php echo $userid; ?> (Auto Generated)<br><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <label for="Email" class="form-label">Email: </label>
+                                        <input type="hidden" value="<?php echo $userid; ?>" name="id00">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <input type="hidden" name="oldemail" value="<?php echo $useremail; ?>">
+                                        <input type="email" name="email" class="input-text" placeholder="Email Address" value="<?php echo $useremail; ?>" required><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <label for="name" class="form-label">Name: </label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <input type="text" name="name" class="input-text" placeholder="Dentist Name" value="<?php echo $username; ?>" required><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <label for="Tele" class="form-label">Telephone: </label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <input type="tel" name="Tele" class="input-text" placeholder="Telephone Number" value="<?php echo $userfetch['doctel']; ?>" required><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <label for="photo" class="form-label">Profile Photo: </label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <input type="file" name="photo" id="photo" class="input-text" accept="image/*">
+                                        <br><br>
+                                        <?php
+                                        $currentPhoto = $userfetch["photo"] ?? '';
+                                        if ($currentPhoto) {
+                                            echo '<img src="../admin/uploads/' . $currentPhoto . '" alt="Current Photo" style="width: 100px; height: 100px; border-radius: 10%;">';
+                                        } else {
+                                            echo '<p>No photo uploaded.</p>';
+                                        }
+                                        ?>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <label for="password" class="form-label">Password: </label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <input type="password" name="password" class="input-text" placeholder="Defind a Password" required><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <label for="cpassword" class="form-label">Conform Password: </label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td" colspan="2">
+                                        <input type="password" name="cpassword" class="input-text" placeholder="Conform Password" required><br>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">
+                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn">
+                                        <input type="submit" value="Save" class="login-btn btn-primary btn">
+                                    </td>
+                                </tr>
+                            </table>
+                        </form>
+                    </div>
                 </div>
-    ';
+            </center>
+            <br><br>
+        </div>
+    </div>
 
-
-
-            }
-            ;
+    <script>
+        // Function to show overlay by ID
+        function showOverlay(id) {
+            document.getElementById(id).style.display = 'flex';
         }
 
-    }
-    ?>
+        // Function to hide overlay by ID
+        function hideOverlay(id) {
+            document.getElementById(id).style.display = 'none';
+        }
 
+        // Close popups when clicking the close button
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeButtons = document.querySelectorAll('.close');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const overlay = this.closest('.overlay');
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
 </body>
-
 </html>

@@ -120,6 +120,7 @@
 
 <body>
     <?php
+    date_default_timezone_set('Asia/Singapore');
     session_start();
 
     if (isset($_SESSION["user"])) {
@@ -233,7 +234,7 @@
                         <h3 class="announcements-title">Settings</h3>
                         <div class="announcement-filters">
                             <a href="?action=add&id=none&error=0" class="non-style-link">
-                                <button class="login-btn btn-primary btn button-icon" 
+                                <button class="filter-btn add-btn"
                                     style="display: flex;justify-content: center;align-items: center;margin-left:75px; width: 200px;">
                                     Add New Service
                                 </button>
@@ -286,8 +287,8 @@
                                             <td><div class="cell-text">'.substr($desc, 0, 50).'...</div></td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <a href="?action=edit&id='.$id.'&error=0" class="action-btn btn-edit">Edit</a>
-                                                    <a href="?action=drop&id='.$id.'&name='.$name.'" class="action-btn btn-delete" 
+                                                    <a href="?action=edit&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
+                                                    <a href="?action=drop&id='.$id.'&name='.$name.'" class="action-btn remove-btn" 
                                                        onclick="return confirm(\'Are you sure you want to remove this service?\')">Remove</a>
                                                 </div>
                                             </td>
@@ -331,7 +332,7 @@
                                             <td><div class="cell-text">'.substr($clinic_info[$field], 0, 50).(strlen($clinic_info[$field]) > 50 ? '...' : '').'</div></td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <a href="?action=edit_clinic&field='.$field.'" class="action-btn btn-edit">Edit</a>
+                                                    <a href="?action=edit_clinic&field='.$field.'" class="action-btn edit-btn">Edit</a>
                                                 </div>
                                             </td>
                                         </tr>';

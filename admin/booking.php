@@ -1,5 +1,6 @@
 <?php
 // Start session and verify at the VERY TOP (no whitespace before this)
+date_default_timezone_set('Asia/Singapore');
 session_start();
 
 // Verify user is logged in and is admin
@@ -26,7 +27,6 @@ if ($database->connect_error) {
     die("Database connection error: " . $database->connect_error);
 }
 
-date_default_timezone_set('Asia/Kolkata');
 $today = date('Y-m-d');
 
 // Test query to verify connection works
@@ -35,14 +35,22 @@ if (!$test) {
     die("Database test query failed: " . $database->error);
 }
 
-// Get totals for right sidebar - with error handling
-$doctorrow = $database->query("SELECT * FROM doctor WHERE status='active'") or die("Doctor query failed: " . $database->error);
-$patientrow = $database->query("SELECT * FROM patient WHERE status='active'") or die("Patient query failed: " . $database->error);
-$appointmentrow = $database->query("SELECT * FROM appointment WHERE status='appointment'") or die("Appointment query failed: " . $database->error);
-$bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'") or die("Booking query failed: " . $database->error);
+// Get totals for right sidebar
+$doctorrow = $database->query("select * from doctor where status='active';");
+$patientrow = $database->query("select * from patient where status='active';");
+$appointmentrow = $database->query("select * from appointment where status='booking';");
+$schedulerow = $database->query("select * from appointment where status='appointment';");
+
+// Calendar variables
+$today = date('Y-m-d');
+$currentMonth = date('F');
+$currentYear = date('Y');
+$daysInMonth = date('t');
+$firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
+$currentDay = date('j');
 
 // Handle booking actions
-if ($_GET) {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && isset($_GET['id'])) {
     $id = $_GET["id"];
     $action = $_GET["action"];
 
@@ -127,7 +135,6 @@ if ($_GET) {
             header("Location: booking.php");
             exit();
         }
-        
     }
 }
 ?>
@@ -143,7 +150,7 @@ if ($_GET) {
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/table.css">
-    <title>Booking - Toothtrackr</title>
+    <title>Booking - ToothTrackr</title>
     <link rel="icon" href="../Media/white-icon/white-ToothTrackr_Logo.png" type="image/png">
     <style>
         .popup {
@@ -189,20 +196,29 @@ if ($_GET) {
             cursor: pointer;
             z-index: 10000;
         }
-       
+
         .stats-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 15px;
         }
+
         .stat-box {
             height: 100%;
         }
+
         .right-sidebar {
             width: 400px;
         }
-        
+
+        .profile-img-small {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
         /* Modal styles */
         .modal {
             position: fixed;
@@ -262,233 +278,12 @@ if ($_GET) {
         .btn-secondary:hover {
             background-color: #da190b;
         }
-        
-        /* Action buttons */
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        
-        .action-btn {
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .accept-btn {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-        }
-        
-        .accept-btn:hover {
-            background-color: #45a049;
-        }
-        
-        .reject-btn {
-            background-color: #f44336;
-            color: white;
-            border: none;
-        }
-        
-        .reject-btn:hover {
-            background-color: #da190b;
-        }
-        
-        /* Search and filter styles */
-        .search-container {
-            margin-bottom: 20px;
-        }
-        
-        .search-input {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .filter-container {
-            background-color: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .filter-container-items {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .btn-filter {
-            background-color: #2a7be4;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-filter:hover {
-            background-color: #1a6bd4;
-        }
-        
-        /* Table styles */
-        .table-container {
-            overflow-x: auto;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .table th {
-            background-color: #f5f5f5;
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-        }
-        
-        .table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .table tr:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .cell-text {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-        
-        /* No results style */
-        .no-results {
-            text-align: center;
-            padding: 40px;
-            color: #777;
-        }
-        
-        /* Calendar section styles */
-        .calendar-section {
-            margin-top: 20px;
-        }
-        
-        .calendar-container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .calendar-month {
-            margin: 0;
-            font-size: 16px;
-            color: #333;
-        }
-        
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-        }
-        
-        .calendar-day {
-            text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-            color: #777;
-            padding: 5px;
-        }
-        
-        .calendar-date {
-            text-align: center;
-            padding: 8px 5px;
-            border-radius: 5px;
-            font-size: 12px;
-        }
-        
-        .calendar-date.today {
-            background-color: #2a7be4;
-            color: white;
-        }
-        
-        .calendar-date.other-month {
-            color: #ccc;
-        }
-        
-        /* Upcoming appointments */
-        .upcoming-appointments {
-            margin-top: 20px;
-            background-color: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .upcoming-appointments h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 16px;
-            color: #333;
-        }
-        
-        .appointment-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .appointment-item:last-child {
-            border-bottom: none;
-        }
-        
-        .appointment-type {
-            margin: 0 0 5px 0;
-            font-size: 14px;
-            color: #333;
-        }
-        
-        .appointment-dentist {
-            margin: 0 0 5px 0;
-            font-size: 12px;
-            color: #777;
-        }
-        
-        .appointment-date {
-            margin: 0;
-            font-size: 12px;
-            color: #777;
-        }
-        
-        .no-appointments {
-            text-align: center;
-            padding: 20px;
-            color: #777;
-            font-size: 14px;
-        }
+
     </style>
 </head>
 
 <body>
     <?php
-
     // Pagination
     $results_per_page = 10;
 
@@ -512,6 +307,8 @@ if ($_GET) {
             appointment.appoid, 
             procedures.procedure_name, 
             patient.pname, 
+            patient.pemail,
+            patient.profile_pic,
             appointment.appodate, 
             appointment.appointment_time,
             doctor.docname as dentist_name
@@ -544,7 +341,7 @@ if ($_GET) {
 
     $result = $database->query($sql_pagination);
     // Count total records
-    $count_result = $database->query(str_replace("appointment.appoid, procedures.procedure_name, patient.pname, appointment.appodate, appointment.appointment_time, doctor.docname as dentist_name", "COUNT(*) as total", $sqlmain));
+    $count_result = $database->query(str_replace("appointment.appoid, procedures.procedure_name, patient.pname, patient.pemail, patient.profile_pic, appointment.appodate, appointment.appointment_time, doctor.docname as dentist_name", "COUNT(*) as total", $sqlmain));
 
     if (!$count_result) {
         die("Count query failed: " . $database->error);
@@ -553,21 +350,6 @@ if ($_GET) {
     $count_row = $count_result->fetch_assoc();
     $total_records = isset($count_row['total']) ? $count_row['total'] : 0;
     $total_pages = ceil($total_records / $results_per_page);
-
-    if ($_GET) {
-        $id = $_GET["id"];
-        $action = $_GET["action"];
-
-        if ($action == 'accept') {
-            $database->query("UPDATE appointment SET status='appointment' WHERE appoid='$id'");
-            header("Location: booking.php");
-            exit();
-        } elseif ($action == 'reject') {
-            $database->query("DELETE FROM appointment WHERE appoid='$id'");
-            header("Location: booking.php");
-            exit();
-        }
-    }
     ?>
     <div class="main-container">
         <div class="sidebar">
@@ -639,7 +421,7 @@ if ($_GET) {
                     <div class="search-container">
                         <form action="" method="GET" style="display: flex; width: 100%;">
                             <input type="search" name="search" id="searchInput" class="search-input"
-                                placeholder="Search by patient name, procedure or dentist"
+                                placeholder="Search by name, email or phone number"
                                 value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
                             <?php if (isset($_GET['search']) && $_GET['search'] != ""): ?>
                                 <button type="button" class="clear-btn" onclick="clearSearch()">×</button>
@@ -657,12 +439,12 @@ if ($_GET) {
                             ?>
                             <a href="?sort=newest<?php echo $searchParam; ?>"
                                 class="filter-btn newest-btn <?php echo ($currentSort === 'newest' || $currentSort === '') ? 'active' : 'inactive'; ?>">
-                                Newest
+                                A-Z
                             </a>
 
                             <a href="?sort=oldest<?php echo $searchParam; ?>"
                                 class="filter-btn oldest-btn <?php echo $currentSort === 'oldest' ? 'active' : 'inactive'; ?>">
-                                Oldest
+                                Z-A
                             </a>
                         </div>
                     </div>
@@ -690,6 +472,7 @@ if ($_GET) {
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th>Profile</th>
                                         <th>Patient Name</th>
                                         <th>Procedure</th>
                                         <th>Dentist</th>
@@ -700,14 +483,34 @@ if ($_GET) {
                                 <tbody>
                                     <?php while ($row = $result->fetch_assoc()): ?>
                                         <tr>
-                                            <td><div class="cell-text"><?php echo $row['pname']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['procedure_name']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['dentist_name']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['appodate'] . ' @ ' . $row['appointment_time']; ?></div></td>
+                                            <td>
+                                                <?php
+                                                // Check if profile picture exists
+                                                if (!empty($row['profile_pic'])) {
+                                                    $photo = "../" . $row['profile_pic'];  // Adding ../ to the location of the photo
+                                                } else {
+                                                    $photo = "../Media/Icon/Blue/care.png"; // Default patient icon
+                                                }
+                                                ?>
+                                                <img src="<?php echo $photo; ?>" alt="<?php echo $row['pname']; ?>"
+                                                    class="profile-img-small">
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['pname']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['procedure_name']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['dentist_name']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['appodate'] . ' @ ' . $row['appointment_time']; ?></div>
+                                            </td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <a href="#" onclick="updateBooking(<?php echo $row['appoid']; ?>, 'accept')" class="action-btn accept-btn">Accept</a>
-                                                    <a href="#" onclick="updateBooking(<?php echo $row['appoid']; ?>, 'reject')" class="action-btn reject-btn">Reject</a>
+                                                    <a href="#" onclick="updateBooking(<?php echo $row['appoid']; ?>, 'accept')" class="action-btn done-btn">Accept</a>
+                                                    <a href="#" onclick="updateBooking(<?php echo $row['appoid']; ?>, 'reject')" class="action-btn remove-btn">Reject</a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -783,13 +586,13 @@ if ($_GET) {
                             <a href="booking.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $bookingrow->num_rows; ?></h1>
+                                        <h1 class="stat-number"><?php echo $appointmentrow->num_rows; ?></h1>
                                         <p class="stat-label">Bookings</p>
                                     </div>
                                     <div class="stat-icon">
                                         <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
-                                        <?php if ($bookingrow->num_rows > 0): ?>
-                                            <span class="notification-badge"><?php echo $bookingrow->num_rows; ?></span>
+                                        <?php if ($appointmentrow->num_rows > 0): ?>
+                                            <span class="notification-badge"><?php echo $appointmentrow->num_rows; ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -798,13 +601,13 @@ if ($_GET) {
                             <a href="appointment.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $appointmentrow->num_rows; ?></h1>
+                                        <h1 class="stat-number"><?php echo $schedulerow->num_rows; ?></h1>
                                         <p class="stat-label">Appointments</p>
                                     </div>
                                     <div class="stat-icon">
                                         <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
-                                        <?php if ($appointmentrow->num_rows > 0): ?>
-                                            <span class="notification-badge"><?php echo $appointmentrow->num_rows; ?></span>
+                                        <?php if ($schedulerow->num_rows > 0): ?>
+                                            <span class="notification-badge"><?php echo $schedulerow->num_rows; ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -833,11 +636,6 @@ if ($_GET) {
                                 <div class="calendar-day">S</div>
 
                                 <?php
-                                // Calculate the first day of the month and number of days
-                                $firstDayOfMonth = date('N', strtotime("first day of this month"));
-                                $daysInMonth = date('t');
-                                $currentDay = date('j');
-
                                 // Calculate the previous month's spillover days
                                 $previousMonthDays = $firstDayOfMonth - 1;
                                 $previousMonthLastDay = date('t', strtotime('last month'));

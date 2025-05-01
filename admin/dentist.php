@@ -14,6 +14,7 @@
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
 
     <?php
+    date_default_timezone_set('Asia/Singapore');
     session_start();
 
     if (isset($_SESSION["user"])) {

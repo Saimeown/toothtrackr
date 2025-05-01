@@ -133,6 +133,7 @@
                 <input type="submit" value="Log in" class="login-btn">
                 <label for="" class="bottom-text">Log in as <a href="../admin/login.php"
                     class="signup-link">Songco Dental and Medical Clinic</a></label>
+                    <label for="" class="bottom-text" style="margin-top: 10px;"><a href="forgot-password.php" class="signup-link">Forgot password?</a></label>
             </form>
         </div>
     </div>

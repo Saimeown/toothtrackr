@@ -1,6 +1,6 @@
 <?php
+date_default_timezone_set('Asia/Singapore');
 session_start();
-date_default_timezone_set('Asia/Kolkata');
 $today = date('Y-m-d');
 
 if (isset($_SESSION["user"])) {
@@ -15,11 +15,37 @@ if (isset($_SESSION["user"])) {
 
 include("../connection.php");
 
-// Get totals for right sidebar
-$doctorrow = $database->query("SELECT * FROM doctor WHERE status='active'");
-$patientrow = $database->query("SELECT * FROM patient WHERE status='active'");
-$appointmentrow = $database->query("SELECT * FROM appointment WHERE status='appointment'");
-$bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'");
+// Get counts for dashboard
+$dentistrow = $database->query("select * from doctor where status='active';");
+$patientrow = $database->query("select * from patient where status='active';");
+$appointmentrow = $database->query("select * from appointment where status='booking';");
+$schedulerow = $database->query("select * from appointment where status='appointment';");
+
+// Pagination
+$results_per_page = 10;
+
+// Determine which page we're on
+if (isset($_GET['page'])) {
+    $page = $_GET['page'];
+} else {
+    $page = 1;
+}
+
+// Calculate the starting limit for SQL
+$start_from = ($page - 1) * $results_per_page;
+
+// Search functionality
+$search = "";
+$sort_param = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+$sort_order = ($sort_param === 'oldest') ? 'DESC' : 'ASC';
+
+// Calendar variables
+$today = date('Y-m-d');
+$currentMonth = date('F');
+$currentYear = date('Y');
+$daysInMonth = date('t');
+$firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
+$currentDay = date('j');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,8 +59,8 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/table.css">
-    <title>Appointments - Toothtrackr</title>
-    <link rel="icon" href="../Media/white-icon/white-ToothTrackr_Logo.png" type="image/png">
+    <title>Appointments - ToothTrackr</title>
+    <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
         .popup {
             animation: transitionIn-Y-bottom 0.5s;
@@ -43,7 +69,7 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
         .sub-table {
             animation: transitionIn-Y-bottom 0.5s;
         }
-        
+
         .overlay {
             position: fixed;
             top: 0;
@@ -65,7 +91,7 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
             max-width: 600px;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
             position: relative;
         }
 
@@ -79,295 +105,54 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
             cursor: pointer;
             z-index: 10000;
         }
-       
+
+        .btn-edit {
+            background-image: url('../Media/Icon/Blue/edit.png');
+            background-repeat: no-repeat;
+            background-position: left center;
+            padding-left: 30px;
+        }
+
+        .btn-view {
+            background-image: url('../Media/Icon/Blue/eye.png');
+            background-repeat: no-repeat;
+            background-position: left center;
+            padding-left: 30px;
+        }
+
+        .btn-delete {
+            background-image: url('../Media/Icon/Blue/delete.png');
+            background-repeat: no-repeat;
+            background-position: left center;
+            padding-left: 30px;
+        }
+
         .stats-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 15px;
         }
+
         .stat-box {
             height: 100%;
         }
+
         .right-sidebar {
             width: 400px;
         }
-        
-        /* Modal styles */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
 
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            width: 500px;
-            text-align: center;
-            max-height: 400px;
-            overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-        }
-
-        .modal-content h2 {
-            color: #333;
-            font-size: 1.4rem;
-            margin: 0 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .modal-body {
-            padding: 10px 0;
-            line-height: 1.6;
-            text-align: left;
-        }
-
-        .modal-body p {
-            margin: 12px 0;
-            color: #555;
-        }
-
-        .modal-body b {
-            color: #333;
-            font-weight: 600;
-            display: inline-block;
-            min-width: 100px;
-        }
-
-        .modal-footer {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .btn-primary {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.3s;
-        }
-
-        .btn-primary:hover {
-            background-color: #45a049;
-        }
-
-        .btn-secondary {
-            background-color: #f44336;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.3s;
-        }
-
-        .btn-secondary:hover {
-            background-color: #da190b;
-        }
-        
-        /* Form styles */
-        .form-group {
-            margin-bottom: 15px;
-            text-align: left;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: #333;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        /* Action buttons */
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-        
-        .action-btn {
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .delete-btn {
-            background-color: #f44336;
-            color: white;
-            border: none;
-        }
-        
-        .delete-btn:hover {
-            background-color: #da190b;
-        }
-        
-        /* Search and filter styles */
-        .search-container {
-            margin-bottom: 20px;
-        }
-        
-        .search-input {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        .filter-container {
-            background-color: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .filter-container-items {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .btn-filter {
-            background-color: #2a7be4;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-filter:hover {
-            background-color: #1a6bd4;
-        }
-        
-        /* Table styles */
-        .table-container {
-            overflow-x: auto;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .table th {
-            background-color: #f5f5f5;
-            padding: 12px 15px;
-            text-align: left;
-            font-weight: 600;
-        }
-        
-        .table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .table tr:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .cell-text {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-        
-        /* No results style */
-        .no-results {
-            text-align: center;
-            padding: 40px;
-            color: #777;
-        }
-        
-        /* Calendar section styles */
-        .calendar-section {
-            margin-top: 20px;
-        }
-        
-        .calendar-container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .calendar-month {
-            margin: 0;
-            font-size: 16px;
-            color: #333;
-        }
-        
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-        }
-        
-        .calendar-day {
-            text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-            color: #777;
-            padding: 5px;
-        }
-        
-        .calendar-date {
-            text-align: center;
-            padding: 8px 5px;
-            border-radius: 5px;
-            font-size: 12px;
-        }
-        
-        .calendar-date.today {
-            background-color: #2a7be4;
-            color: white;
-        }
-        
-        .calendar-date.other-month {
-            color: #ccc;
+        .profile-img-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
         }
     </style>
 </head>
 
 <body>
+
     <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-logo">
@@ -434,91 +219,97 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
         <div class="content-area">
             <div class="content">
                 <div class="main-section">
-                    <!-- header -->
-                    <div class="announcements-header">
-                        <h3 class="announcements-title">Manage Appointments</h3>
-                        <a href="history.php" class="btn-primary-soft" style="padding: 10px 15px; text-decoration: none; border-radius: 10px; font-size: 12px; width: 150px; margin-right: 85px;">
-                            Past Appointments
-                        </a>
-                    </div>
-
-                    <!-- Date filter form -->
-                    <div class="filter-container">
-                        <form action="" method="post" style="display: flex; gap: 10px; align-items: center;">
-                            <div style="flex-grow: 1;">
-                                <input type="date" name="sheduledate" id="date" class="input-text filter-container-items" 
-                                    style="margin: 0; width: 100%;" value="<?php echo isset($_POST['sheduledate']) ? $_POST['sheduledate'] : ''; ?>">
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <select name="docid" id="" class="input-text filter-container-items" style="width:100%; height: 37px; margin: 0;">
-                                    <option value="" disabled selected hidden>Choose Dentist Name</option>
-                                    <?php
-                                    $list11 = $database->query("select * from doctor order by docname asc;");
-                                    for ($y = 0; $y < $list11->num_rows; $y++) {
-                                        $row00 = $list11->fetch_assoc();
-                                        $sn = $row00["docname"];
-                                        $id00 = $row00["docid"];
-                                        $selected = (isset($_POST['docid']) && $_POST['docid'] == $id00) ? 'selected' : '';
-                                        echo "<option value='$id00' $selected>$sn</option>";
-                                    }
-                                    ?>
-                                </select>
-                            </div>
-                            <div>
-                                <input type="submit" name="filter" value="Filter" class="btn-primary-soft btn button-icon btn-filter">
-                            </div>
-                            <?php if (isset($_POST['filter'])): ?>
-                                <div>
-                                    <a href="appointment.php" class="btn-secondary" style="padding: 10px 15px; display: inline-block;">Clear</a>
-                                </div>
+                    <!-- search bar -->
+                    <div class="search-container">
+                        <form action="" method="GET" style="display: flex; width: 100%;">
+                            <input type="search" name="search" id="searchInput" class="search-input"
+                                placeholder="Search by patient name, dentist name or procedure"
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <?php if (isset($_GET['search']) && $_GET['search'] != ""): ?>
+                                <button type="button" class="clear-btn" onclick="clearSearch()">×</button>
                             <?php endif; ?>
                         </form>
                     </div>
 
+                    <!-- header -->
+                    <div class="announcements-header">
+                        <h3 class="announcements-title">Manage Appointments</h3>
+                        <div class="announcement-filters">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+                            ?>
+                            <a href="?sort=newest<?php echo $searchParam; ?>"
+                                class="filter-btn newest-btn <?php echo ($currentSort === 'newest' || $currentSort === '') ? 'active' : 'inactive'; ?>">
+                                A-Z
+                            </a>
+
+                            <a href="?sort=oldest<?php echo $searchParam; ?>"
+                                class="filter-btn oldest-btn <?php echo $currentSort === 'oldest' ? 'active' : 'inactive'; ?>">
+                                Z-A
+                            </a>
+
+                            <a href="history.php" class="filter-btn add-btn">
+                                Past Appointments
+                            </a>
+                        </div>
+                    </div>
+
                     <?php
-                    if ($_POST) {
-                        $sqlpt1 = "";
-                        if (!empty($_POST["sheduledate"])) {
-                            $sheduledate = $_POST["sheduledate"];
-                            $sqlpt1 = " appointment.appodate='$sheduledate' ";
-                        }
+                    // Build the base query
+                    $sqlmain = "SELECT 
+                        appointment.appoid, 
+                        appointment.pid, 
+                        appointment.appodate, 
+                        appointment.procedure_id, 
+                        procedures.procedure_name, 
+                        appointment.appointment_time, 
+                        appointment.docid, 
+                        patient.pname, 
+                        patient.pemail,
+                        patient.ptel,
+                        patient.profile_pic,
+                        doctor.docname 
+                    FROM appointment 
+                    INNER JOIN patient ON appointment.pid = patient.pid 
+                    INNER JOIN doctor ON appointment.docid = doctor.docid 
+                    INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
+                    WHERE appointment.status = 'appointment'";
 
-                        $sqlpt2 = "";
-                        if (!empty($_POST["docid"])) {
-                            $docid = $_POST["docid"];
-                            $sqlpt2 = " appointment.docid=$docid ";
-                        }
-
-                        $sqlmain = "SELECT appointment.appoid, appointment.pid, appointment.appodate, appointment.event_name, 
-                                   appointment.procedure_id, procedures.procedure_name, appointment.appointment_time, 
-                                   appointment.docid, patient.pname, doctor.docname 
-                            FROM appointment 
-                            INNER JOIN patient ON appointment.pid = patient.pid 
-                            INNER JOIN doctor ON appointment.docid = doctor.docid 
-                            INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
-                            WHERE appointment.status = 'appointment'";
-
-                        $sqllist = array($sqlpt1, $sqlpt2);
-                        $sqlkeywords = array(" where ", " and ");
-                        $key2 = 0;
-                        foreach ($sqllist as $key) {
-                            if (!empty($key)) {
-                                $sqlmain .= $sqlkeywords[$key2] . $key;
-                                $key2++;
-                            }
-                        }
-                    } else {
-                        $sqlmain = "SELECT appointment.appoid, appointment.pid, appointment.appodate, appointment.event_name, 
-                                   appointment.procedure_id, procedures.procedure_name, appointment.appointment_time, 
-                                   appointment.docid, patient.pname, doctor.docname 
-                            FROM appointment 
-                            INNER JOIN patient ON appointment.pid = patient.pid 
-                            INNER JOIN doctor ON appointment.docid = doctor.docid 
-                            INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
-                            WHERE appointment.status = 'appointment'";
+                    // Add search condition if search term exists
+                    if (isset($_GET['search'])) {
+                        $search = $_GET['search'];
+                        $sqlmain .= " AND (patient.pname LIKE '%$search%' OR doctor.docname LIKE '%$search%' OR procedures.procedure_name LIKE '%$search%')";
                     }
 
+                    // Add sorting
+                    $sqlmain .= " ORDER BY ";
+                    if ($sort_param === 'oldest') {
+                        $sqlmain .= "appointment.appodate DESC, appointment.appointment_time DESC";
+                    } else {
+                        $sqlmain .= "appointment.appodate ASC, appointment.appointment_time ASC";
+                    }
+
+                    // Add pagination
+                    $sqlmain .= " LIMIT $start_from, $results_per_page";
+
                     $result = $database->query($sqlmain);
+
+                    // Count query for pagination
+                    $count_query = "SELECT COUNT(*) as total 
+               FROM appointment 
+               INNER JOIN patient ON appointment.pid = patient.pid 
+               INNER JOIN doctor ON appointment.docid = doctor.docid 
+               INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
+               WHERE appointment.status = 'appointment'";
+
+                    if (isset($_GET['search'])) {
+                        $count_query .= " AND (patient.pname LIKE '%$search%' OR doctor.docname LIKE '%$search%' OR procedures.procedure_name LIKE '%$search%')";
+                    }
+
+                    $count_result = $database->query($count_query);
+                    $count_row = $count_result->fetch_assoc();
+                    $total_pages = ceil($count_row['total'] / $results_per_page);
                     ?>
 
                     <?php if ($result->num_rows > 0): ?>
@@ -526,9 +317,9 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th>Profile</th>
                                         <th>Patient Name</th>
                                         <th>Dentist</th>
-                                        <th>Event Name</th>
                                         <th>Procedure</th>
                                         <th>Appointment Date</th>
                                         <th>Appointment Time</th>
@@ -538,16 +329,41 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                                 <tbody>
                                     <?php while ($row = $result->fetch_assoc()): ?>
                                         <tr>
-                                            <td><div class="cell-text"><?php echo $row['pname']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['docname']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['event_name']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['procedure_name']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['appodate']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['appointment_time']; ?></div></td>
+                                            <td>
+                                                <?php
+                                                // Check if profile picture exists
+                                                if (!empty($row['profile_pic'])) {
+                                                    $photo = "../" . $row['profile_pic'];  // Adding ../ to the location of the photo
+                                                } else {
+                                                    $photo = "../Media/Icon/Blue/care.png"; // Default patient icon
+                                                }
+                                                ?>
+                                                <img src="<?php echo $photo; ?>" alt="<?php echo $row['pname']; ?>"
+                                                    class="profile-img-small">
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['pname']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['docname']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['procedure_name']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text">
+                                                    <?php echo date('M j, Y', strtotime($row['appodate'])); ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text">
+                                                    <?php echo date('g:i A', strtotime($row['appointment_time'])); ?></div>
+                                            </td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <a href="#" onclick="confirmCancel(<?php echo $row['appoid']; ?>, '<?php echo addslashes($row['pname']); ?>', '<?php echo addslashes($row['event_name']); ?>')" 
-                                                       class="action-btn delete-btn">Cancel</a>
+                                                    <a href="?action=view&id=<?php echo $row['appoid']; ?>"
+                                                        class="action-btn view-btn">View</a>
+                                                    <a href="?action=drop&id=<?php echo $row['appoid']; ?>&name=<?php echo urlencode($row['pname']); ?>"
+                                                        class="action-btn remove-btn">Cancel</a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -555,13 +371,36 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Pagination -->
+                        <div class="pagination">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $sortParam = '&sort=' . $currentSort;
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+
+                            // Previous link
+                            if ($page > 1) {
+                                echo '<a href="?page=' . ($page - 1) . $searchParam . $sortParam . '">&laquo; Previous</a>';
+                            }
+
+                            // Page links
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+
+                            for ($i = $start_page; $i <= $end_page; $i++) {
+                                echo '<a href="?page=' . $i . $searchParam . $sortParam . '"' . ($i == $page ? ' class="active"' : '') . '>' . $i . '</a>';
+                            }
+
+                            // Next link
+                            if ($page < $total_pages) {
+                                echo '<a href="?page=' . ($page + 1) . $searchParam . $sortParam . '">Next &raquo;</a>';
+                            }
+                            ?>
+                        </div>
                     <?php else: ?>
                         <div class="no-results">
-                            <img src="../img/notfound.svg" width="25%">
-                            <p>We couldn't find any appointments matching your criteria.</p>
-                            <a href="appointment.php" class="btn-primary-soft" style="padding: 10px 15px; text-decoration: none; display: inline-block; margin-top: 15px;">
-                                Show All Appointments
-                            </a>
+                            <p>No appointments found. Please try a different search term.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -574,7 +413,7 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                             <a href="dentist.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $doctorrow->num_rows; ?></h1>
+                                        <h1 class="stat-number"><?php echo $dentistrow->num_rows; ?></h1>
                                         <p class="stat-label">Dentists</p>
                                     </div>
                                     <div class="stat-icon">
@@ -599,13 +438,13 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                             <a href="booking.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $bookingrow->num_rows; ?></h1>
+                                        <h1 class="stat-number"><?php echo $appointmentrow->num_rows; ?></h1>
                                         <p class="stat-label">Bookings</p>
                                     </div>
                                     <div class="stat-icon">
                                         <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
-                                        <?php if ($bookingrow->num_rows > 0): ?>
-                                            <span class="notification-badge"><?php echo $bookingrow->num_rows; ?></span>
+                                        <?php if ($appointmentrow->num_rows > 0): ?>
+                                            <span class="notification-badge"><?php echo $appointmentrow->num_rows; ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -614,13 +453,13 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                             <a href="appointment.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $appointmentrow->num_rows; ?></h1>
+                                        <h1 class="stat-number"><?php echo $schedulerow->num_rows; ?></h1>
                                         <p class="stat-label">Appointments</p>
                                     </div>
                                     <div class="stat-icon">
                                         <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
-                                        <?php if ($appointmentrow->num_rows > 0): ?>
-                                            <span class="notification-badge"><?php echo $appointmentrow->num_rows; ?></span>
+                                        <?php if ($schedulerow->num_rows > 0): ?>
+                                            <span class="notification-badge"><?php echo $schedulerow->num_rows; ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -649,11 +488,6 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                                 <div class="calendar-day">S</div>
 
                                 <?php
-                                // Calculate the first day of the month and number of days
-                                $firstDayOfMonth = date('N', strtotime("first day of this month"));
-                                $daysInMonth = date('t');
-                                $currentDay = date('j');
-
                                 // Calculate the previous month's spillover days
                                 $previousMonthDays = $firstDayOfMonth - 1;
                                 $previousMonthLastDay = date('t', strtotime('last month'));
@@ -711,9 +545,9 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
                                         <p class="appointment-dentist">With Dr. ' . htmlspecialchars($appointment['doctor_name']) . '</p>
                                         <p class="appointment-date">' . htmlspecialchars($appointment['procedure_name']) . '</p>
                                         <p class="appointment-date">' .
-                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
-                                            ' • ' .
-                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                        htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                        ' • ' .
+                                        htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
                                         '</p>
                                     </div>';
                                 }
@@ -730,107 +564,193 @@ $bookingrow = $database->query("SELECT * FROM appointment WHERE status='booking'
         </div>
     </div>
 
-    <!-- Enhanced Cancellation Modal -->
-    <div id="cancelModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <h2>Cancel Appointment</h2>
-            <div class="modal-body">
-                <form id="cancelForm">
-                    <input type="hidden" name="appoid" id="cancelAppoid">
-                    <input type="hidden" name="source" value="admin">
-                    <p>Are you sure you want to cancel this appointment?</p>
-                    <div class="form-group">
-                        <label for="cancelReason">Reason for cancellation:</label>
-                        <select class="form-control" name="cancel_reason" id="cancelReason" required>
-                            <option value="">-- Select a reason --</option>
-                            <option value="Dentist Unavailable">Dentist Unavailable</option>
-                            <option value="Clinic Closed">Clinic Closed</option>
-                            <option value="Emergency Situation">Emergency Situation</option>
-                            <option value="Patient Request">Patient Request</option>
-                            <option value="Other">Other (please specify)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="otherReasonGroup" style="display:none;">
-                        <label for="otherReason">Please specify:</label>
-                        <input type="text" class="form-control" name="other_reason" id="otherReason">
-                    </div>
-                </form>
+    <?php
+    if ($_GET) {
+        $id = $_GET["id"];
+        $action = $_GET["action"];
+        if ($action == 'drop') {
+            $nameget = $_GET["name"];
+            echo '
+            <div id="popup1" class="overlay">
+                    <div class="popup" style="max-height: 200px;">
+                    <center>
+                        <h2>Are you sure?</h2>
+                        <a class="close" href="appointment.php">&times;</a>
+                        <div class="content">
+                            You want to cancel this appointment<br>(' . substr($nameget, 0, 40) . ').
+                           
+                            <a href="delete-appointment.php?id=' . $id . '" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"<font class="tn-in-text">&nbsp;Yes&nbsp;</font></button></a>&nbsp;&nbsp;&nbsp;
+                        <a href="appointment.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;No&nbsp;&nbsp;</font></button></a>
+                        </div>
+                    </center>
             </div>
-            <div class="modal-footer">
-                <button onclick="closeModal()" class="btn-secondary">Cancel</button>
-                <button onclick="submitCancelForm()" class="btn-primary">Confirm Cancellation</button>
             </div>
-        </div>
-    </div>
+            ';
+        } elseif ($action == 'view') {
+            $sqlmain = "SELECT 
+                            appointment.appoid, 
+                            appointment.pid, 
+                            appointment.appodate, 
+                            appointment.procedure_id, 
+                            procedures.procedure_name, 
+                            appointment.appointment_time, 
+                            appointment.docid, 
+                            patient.pname, 
+                            patient.pemail,
+                            patient.ptel,
+                            doctor.docname
+                        FROM appointment 
+                        INNER JOIN patient ON appointment.pid = patient.pid 
+                        INNER JOIN doctor ON appointment.docid = doctor.docid 
+                        INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
+                        WHERE appointment.appoid='$id'";
+            $result = $database->query($sqlmain);
+            $row = $result->fetch_assoc();
+            $patient_name = $row["pname"];
+            $dentist_name = $row["docname"];
+            $procedure_name = $row["procedure_name"];
+            $appodate = $row["appodate"];
+            $appointment_time = $row["appointment_time"];
+            $patient_email = $row["pemail"];
+            $patient_tel = $row["ptel"];
+
+            echo '
+            <div id="popup1" class="overlay">
+                <div class="popup">
+                    <center>
+                        <h2>Appointment Details</h2>
+                        <a class="close" href="appointment.php">&times;</a>
+                        <div class="content">
+                            <table width="100%" class="sub-table scrolldown add-doc-form-container" border="0">
+                                <tr>
+                                    <td class="label-td" style="width: 30%;">
+                                        <label for="name" class="form-label">Patient Name:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars($patient_name) . '</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td">
+                                        <label for="Email" class="form-label">Patient Email:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars($patient_email) . '</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td">
+                                        <label for="Tele" class="form-label">Patient Phone:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars($patient_tel) . '</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td">
+                                        <label for="dentist" class="form-label">Dentist:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars($dentist_name) . '</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td">
+                                        <label for="procedure" class="form-label">Procedure:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars($procedure_name) . '</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td">
+                                        <label for="date" class="form-label">Appointment Date:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars(date('F j, Y', strtotime($appodate))) . '</td>
+                                </tr>
+                                <tr>
+                                    <td class="label-td">
+                                        <label for="time" class="form-label">Appointment Time:</label>
+                                    </td>
+                                    <td>' . htmlspecialchars(date('g:i A', strtotime($appointment_time))) . '</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="padding-top: 20px;">
+                                        <a href="appointment.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn"></a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </center>
+                </div>
+            </div>';
+        }
+    }
+    ?>
 
     <script>
-        let currentAppoid = null;
-        let currentPatientName = null;
-        let currentEventName = null;
-
-        function confirmCancel(appoid, patientName, eventName) {
-            currentAppoid = appoid;
-            currentPatientName = patientName;
-            currentEventName = eventName;
-            
-            // Reset form
-            document.getElementById("cancelForm").reset();
-            document.getElementById("otherReasonGroup").style.display = "none";
-            
-            // Set the appointment ID
-            document.getElementById("cancelAppoid").value = appoid;
-            
-            // Show modal
-            document.getElementById("cancelModal").style.display = "flex";
+        // Function to clear search and redirect
+        function clearSearch() {
+            window.location.href = 'appointment.php';
         }
 
-        // Handle reason dropdown change
-        document.getElementById("cancelReason").addEventListener("change", function() {
-            const otherContainer = document.getElementById("otherReasonGroup");
-            if (this.value === "Other") {
-                otherContainer.style.display = "block";
-            } else {
-                otherContainer.style.display = "none";
+        // Search input event listener
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const clearBtn = document.querySelector('.clear-btn');
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    clearSearch();
+                });
             }
         });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Show popup if URL has any action parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
 
-        function submitCancelForm() {
-            const form = document.getElementById("cancelForm");
-            const reasonSelect = document.getElementById("cancelReason");
-            
-            if (!reasonSelect.value) {
-                alert("Please select a cancellation reason");
-                return;
-            }
-            
-            // Submit form via AJAX
-            const formData = new FormData(form);
-            
-            fetch("delete-appointment.php", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status) {
-                    alert(data.message);
-                    window.location.reload(); // Refresh the page
-                } else {
-                    alert("Error: " + data.message);
+            if (action === 'view' || action === 'edit' || action === 'drop' || action === 'add') {
+                const popup = document.getElementById('popup1');
+                if (popup) {
+                    popup.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
                 }
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("An error occurred while processing your request.");
-            });
-        }
+            }
 
-        function closeModal() {
-            document.getElementById("cancelModal").style.display = "none";
-            currentAppoid = null;
-            currentPatientName = null;
-            currentEventName = null;
-        }
+
+            // Close button functionality
+            const closeButtons = document.querySelectorAll('.close');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const overlay = this.closest('.overlay');
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                        document.body.style.overflow = '';
+                        // Remove the parameters from URL without reloading
+                        const url = new URL(window.location);
+                        url.searchParams.delete('action');
+                        url.searchParams.delete('id');
+                        url.searchParams.delete('name');
+                        url.searchParams.delete('error');
+                        history.pushState(null, '', url);
+                    }
+                });
+            });
+
+
+            // Close popup when clicking outside of it
+            const overlays = document.querySelectorAll('.overlay');
+            overlays.forEach(overlay => {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        this.style.display = 'none';
+                        document.body.style.overflow = '';
+                        // Remove the parameters from URL without reloading
+                        const url = new URL(window.location);
+                        url.searchParams.delete('action');
+                        url.searchParams.delete('id');
+                        url.searchParams.delete('name');
+                        url.searchParams.delete('error');
+                        history.pushState(null, '', url);
+                    }
+                });
+            });
+        });
     </script>
 </body>
+
 </html>

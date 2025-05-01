@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Singapore');
 session_start();
 
 if (isset($_SESSION["user"])) {
@@ -39,7 +40,7 @@ $sort_order = ($sort_param === 'oldest') ? 'DESC' : 'ASC';
 if (isset($_GET['action'])) {
     if ($_GET['action'] == 'view' && isset($_GET['id'])) {
         $patient_id = $_GET['id'];
-        
+
         // Fetch patient basic info
         $patient_sql = "SELECT * FROM patient WHERE pid = ?";
         $stmt = $database->prepare($patient_sql);
@@ -47,12 +48,12 @@ if (isset($_GET['action'])) {
         $stmt->execute();
         $patient_result = $stmt->get_result();
         $patient = $patient_result->fetch_assoc();
-        
+
         if (!$patient) {
             header("Location: records.php?error=patient_not_found");
             exit();
         }
-        
+
         // Fetch medical history
         $medical_sql = "SELECT * FROM medical_history WHERE email = ?";
         $stmt = $database->prepare($medical_sql);
@@ -60,7 +61,7 @@ if (isset($_GET['action'])) {
         $stmt->execute();
         $medical_result = $stmt->get_result();
         $medical_history = $medical_result->fetch_assoc();
-        
+
         // Fetch informed consent
         $consent_sql = "SELECT * FROM informed_consent WHERE email = ? ORDER BY consent_date DESC LIMIT 1";
         $stmt = $database->prepare($consent_sql);
@@ -96,6 +97,7 @@ $currentDay = date('j');
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -116,7 +118,7 @@ $currentDay = date('j');
         .sub-table {
             animation: transitionIn-Y-bottom 0.5s;
         }
-        
+
         .overlay {
             position: fixed;
             top: 0;
@@ -138,7 +140,7 @@ $currentDay = date('j');
             max-width: 800px;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
             position: relative;
         }
 
@@ -152,68 +154,75 @@ $currentDay = date('j');
             cursor: pointer;
             z-index: 10000;
         }
-       
+
         .btn-edit {
             background-image: url('../Media/Icon/Blue/edit.png');
             background-repeat: no-repeat;
             background-position: left center;
             padding-left: 30px;
         }
-       
+
         .btn-view {
             background-image: url('../Media/Icon/Blue/eye.png');
             background-repeat: no-repeat;
             background-position: left center;
             padding-left: 30px;
         }
-       
+
         .btn-delete {
             background-image: url('../Media/Icon/Blue/delete.png');
             background-repeat: no-repeat;
             background-position: left center;
             padding-left: 30px;
         }
-    
+
         .stats-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 15px;
         }
+
         .stat-box {
             height: 100%;
         }
+
         .right-sidebar {
             width: 400px;
         }
+
         .profile-img-small {
             width: 50px;
             height: 50px;
             border-radius: 50%;
             object-fit: cover;
         }
-        
+
         /* Records specific styles */
         .record-section {
             margin-bottom: 30px;
             padding: 20px;
             background: white;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
         .record-section h3 {
             border-bottom: 1px solid #eee;
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
+
         .record-row {
             display: flex;
             margin-bottom: 15px;
         }
+
         .record-label {
             font-weight: bold;
             width: 250px;
         }
+
         .signature-image {
             max-width: 300px;
             max-height: 150px;
@@ -350,13 +359,22 @@ $currentDay = date('j');
                                                 <img src="<?php echo $photo; ?>" alt="<?php echo $row['pname']; ?>"
                                                     class="profile-img-small">
                                             </td>
-                                            <td><div class="cell-text"><?php echo $row['pname']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['pemail']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['ptel']; ?></div></td>
-                                            <td><div class="cell-text"><?php echo $row['pdob']; ?></div></td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['pname']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['pemail']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['ptel']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['pdob']; ?></div>
+                                            </td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <a href="records.php?action=view&id=<?php echo $row['pid']; ?>" class="action-btn view-btn">View Records</a>
+                                                    <a href="records.php?action=view&id=<?php echo $row['pid']; ?>"
+                                                        class="action-btn view-btn">View Records</a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -538,9 +556,9 @@ $currentDay = date('j');
                                         <p class="appointment-dentist">With Dr. ' . htmlspecialchars($appointment['doctor_name']) . '</p>
                                         <p class="appointment-date">' . htmlspecialchars($appointment['procedure_name']) . '</p>
                                         <p class="appointment-date">' .
-                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
-                                            ' • ' .
-                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                        htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                        ' • ' .
+                                        htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
                                         '</p>
                                     </div>';
                                 }
@@ -567,12 +585,15 @@ $currentDay = date('j');
                         <table width="90%" class="sub-table scrolldown add-doc-form-container" border="0">
                             <tr>
                                 <td>
-                                    <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">Patient Records: <?php echo $patient['pname']; ?></p>
-                                    <p style="font-size: 14px;color: rgb(119, 119, 119);padding: 0;margin: 0;text-align: left;">Patient ID: P-<?php echo $patient['pid']; ?></p>
+                                    <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">
+                                        Patient Records: <?php echo $patient['pname']; ?></p>
+                                    <p
+                                        style="font-size: 14px;color: rgb(119, 119, 119);padding: 0;margin: 0;text-align: left;">
+                                        Patient ID: P-<?php echo $patient['pid']; ?></p>
                                     <br>
                                 </td>
                             </tr>
-                            
+
                             <tr>
                                 <td colspan="2">
                                     <div class="record-section">
@@ -598,7 +619,7 @@ $currentDay = date('j');
                                             <span><?php echo $patient['paddress']; ?></span>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="record-section">
                                         <h3>Medical History</h3>
                                         <?php if ($medical_history): ?>
@@ -610,7 +631,9 @@ $currentDay = date('j');
                                                 <span class="record-label">Under Medical Treatment:</span>
                                                 <span><?php echo $medical_history['under_treatment']; ?></span>
                                                 <?php if ($medical_history['under_treatment'] == 'Yes'): ?>
-                                                    <div style="margin-left: 250px;"><?php echo $medical_history['condition_treated']; ?></div>
+                                                    <div style="margin-left: 250px;">
+                                                        <?php echo $medical_history['condition_treated']; ?>
+                                                    </div>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="record-row">
@@ -625,7 +648,9 @@ $currentDay = date('j');
                                                 <span class="record-label">Taking Medication:</span>
                                                 <span><?php echo $medical_history['medication']; ?></span>
                                                 <?php if ($medical_history['medication'] == 'Yes'): ?>
-                                                    <div style="margin-left: 250px;"><?php echo $medical_history['medication_specify']; ?></div>
+                                                    <div style="margin-left: 250px;">
+                                                        <?php echo $medical_history['medication_specify']; ?>
+                                                    </div>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="record-row">
@@ -656,7 +681,7 @@ $currentDay = date('j');
                                             <p>No medical history recorded for this patient.</p>
                                         <?php endif; ?>
                                     </div>
-                                    
+
                                     <div class="record-section">
                                         <h3>Informed Consent</h3>
                                         <?php if ($informed_consent): ?>
@@ -707,7 +732,8 @@ $currentDay = date('j');
                                             <?php if ($informed_consent['id_signature_path']): ?>
                                                 <div class="record-row">
                                                     <span class="record-label">Signature:</span>
-                                                    <img src="<?php echo $informed_consent['id_signature_path']; ?>" alt="Patient Signature" class="signature-image">
+                                                    <img src="<?php echo $informed_consent['id_signature_path']; ?>"
+                                                        alt="Patient Signature" class="signature-image">
                                                 </div>
                                             <?php endif; ?>
                                         <?php else: ?>
@@ -718,7 +744,8 @@ $currentDay = date('j');
                             </tr>
                             <tr>
                                 <td colspan="2">
-                                    <a href="records.php"><input type="button" value="Close" class="login-btn btn-primary-soft btn" style="width: 100%;"></a>
+                                    <a href="records.php"><input type="button" value="Close"
+                                            class="login-btn btn-primary-soft btn" style="width: 100%;"></a>
                                 </td>
                             </tr>
                         </table>
@@ -757,4 +784,5 @@ $currentDay = date('j');
         });
     </script>
 </body>
+
 </html>

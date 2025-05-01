@@ -1426,3 +1426,229 @@ iframe {
         margin: 5px;
     }
 }
+
+/***************** Help Button Styles *************/
+.help-button-container {
+    position: fixed;
+    bottom: 80px;
+    right: 80px;
+    z-index: 1000;
+}
+
+
+.help-button {
+    all: unset;
+    overflow: hidden;
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #6491bb;
+    background-color: white;
+    border: 2px solid #6491bb;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+
+.help-button:hover {
+    color: rgb(255, 255, 255);
+    background-color: #6491bb;
+    transform: scale(1.1);
+}
+
+
+.help-modal {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* Changed from 'auto' to 'hidden' */
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+
+.help-modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    animation: modalFadeIn 0.4s;
+    max-height: 80vh;
+    /* Limit height */
+    overflow-y: auto;
+    /* Only make content scrollable if needed */
+}
+
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+.close-modal {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    color: #777;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+
+.close-modal:hover {
+    color: #333;
+}
+
+
+.help-modal-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+
+.modal-logo {
+    width: 50px;
+    height: 50px;
+    margin-right: 15px;
+}
+
+
+.help-modal-header h3 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+
+.contact-info-modal {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+
+.contact-info-modal h4 {
+    font-family: 'Poppins', sans-serif;
+    color: #84b6e4;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+
+.contact-info-modal p {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    font-family: 'Mulish', sans-serif;
+}
+
+
+.contact-info-modal img.contact-modal-icon {
+    margin-right: 15px;
+    width: 25px;
+    height: 25px;
+    vertical-align: middle;
+}
+
+
+.bug-report-form h4 {
+    font-family: 'Poppins', sans-serif;
+    color: #84b6e4;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-family: 'Mulish', sans-serif;
+    font-weight: 500;
+}
+
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-family: 'Mulish', sans-serif;
+}
+
+
+.form-group textarea {
+    resize: vertical;
+}
+
+
+.submit-report {
+    background-color: #6491bb;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    width: 100%;
+    font-size: 15px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+
+.submit-report:hover {
+    background-color: #7fa6ca;
+}
+
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .help-button-container {
+        bottom: 20px;
+        right: 20px;
+    }
+
+
+    .help-modal-content {
+        margin: 15% auto;
+        width: 95%;
+        padding: 20px;
+    }
+}

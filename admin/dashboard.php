@@ -55,6 +55,7 @@
 }
 </style>
 <?php
+date_default_timezone_set('Asia/Singapore');
 session_start();
 
 
