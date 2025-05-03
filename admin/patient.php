@@ -81,7 +81,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
         // Render the popup
         echo '
         <div id="popup1" class="overlay">
-            <div class="popup">
+            <div class="popup1">
                 <center>
                     <a class="close" href="patient.php">&times;</a>
                     <div style="display: flex;justify-content: center;">
@@ -211,13 +211,7 @@ if (isset($_GET['status'])) {
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
 
     <style>
-        .popup {
-            animation: transitionIn-Y-bottom 0.5s;
-        }
-
-        .sub-table {
-            animation: transitionIn-Y-bottom 0.5s;
-        }
+        
         
         .overlay {
             position: fixed;
@@ -229,20 +223,10 @@ if (isset($_GET['status'])) {
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
+            z-index: 999;
         }
 
-        .popup {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            width: 80%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            position: relative;
-        }
+        
 
         .close {
             position: absolute;
@@ -296,6 +280,9 @@ if (isset($_GET['status'])) {
         }
         .view-btn {
             width: 120px;
+        }
+        .popup1 {
+            background-color: white;
         }
     </style>
 </head>

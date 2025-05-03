@@ -375,6 +375,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
             border-radius: 8px;
             display: none;
         }
+        
     </style>
 </head>
 
@@ -721,9 +722,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                         <p>Are you sure you want to deactivate your account?</p>
                         <p>This will remove <strong>' . substr($name, 0, 40) . '</strong> from the system.</p>
                         
-                        <div class="btn-row">
-                            <a href="settings.php" class="btn-outline">Cancel</a>
-                            <a href="delete-account.php?id=' . $id . '" class="btn-danger">Deactivate</a>
+                        <div class="action-buttons-right">
+                            <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                            <a href="delete-account.php?id=' . $id . '" class="action-btn remove-btn">Deactivate</a>
                         </div>
                     </div>
                 </div>
@@ -755,9 +756,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                                 <input type="password" name="confirm_password" class="input-text" placeholder="Confirm new password" required>
                             </div>
                             
-                            <div class="btn-row">
-                                <a href="settings.php" class="btn-outline">Cancel</a>
-                                <button type="submit" class="btn-primary">Change Password</button>
+                            <div class="action-buttons-right">
+                                <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                                <button type="submit" class="action-btn done-btn">Change</button>
                             </div>
                         </form>
                     </div>
@@ -799,9 +800,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                                 <input type="tel" name="Tele" class="input-text" placeholder="Telephone Number" value="' . htmlspecialchars($tele) . '" required>
                             </div>
                             
-                            <div class="btn-row">
-                                <a href="settings.php" class="btn-outline">Cancel</a>
-                                <button type="submit" class="btn-primary">Save Changes</button>
+                            <div class="action-buttons-right">
+                                <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                                <button type="submit" class="action-btn done-btn">Save</button>
                             </div>
                         </form>
                     </div>

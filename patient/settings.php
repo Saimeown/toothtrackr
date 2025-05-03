@@ -146,6 +146,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/settings.css">
+    <link rel="stylesheet" href="../css/table.css">
     <title>Settings - ToothTrackr</title>
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
@@ -806,9 +807,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
                         <p>Are you sure you want to deactivate your account?</p>
                         <p>This will remove <strong>' . substr($name, 0, 40) . '</strong> from the system.</p>
                         
-                        <div class="btn-row">
-                            <a href="settings.php" class="btn-outline">Cancel</a>
-                            <a href="delete-account.php?id=' . $id . '" class="btn-danger">Deactivate</a>
+                        <div class="action-buttons-right">
+                            <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                            <a href="delete-account.php?id=' . $id . '" class="action-btn remove-btn">Deactivate</a>
                         </div>
                     </div>
                 </div>
@@ -1127,9 +1128,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
                     </div>
                 </form>
             </div>
-            <div class="btn-row" style="flex-shrink: 0; padding: 20px; border-top: 1px solid #eee;">
-                <a href="settings.php" class="btn-outline">Cancel</a>
-                <button type="submit" form="medical-history-form" class="btn-primary">Save Changes</button>
+            <div class="action-buttons-right" style="flex-shrink: 0; padding: 20px; border-top: 1px solid #eee;">
+                <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                <button type="submit" form="medical-history-form" class="action-btn done-btn">Save</button>
             </div>
         </div>
     </div>
@@ -1161,9 +1162,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
                                 <input type="password" name="confirm_password" class="input-text" placeholder="Confirm new password" required>
                             </div>
                             
-                            <div class="btn-row">
-                                <a href="settings.php" class="btn-outline">Cancel</a>
-                                <button type="submit" class="btn-primary">Change Password</button>
+                            <div class="action-buttons-right">
+                                <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                                <button type="submit" class="action-btn done-btn">Change</button>
                             </div>
                         </form>
                     </div>
@@ -1221,9 +1222,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
                                 <input type="text" name="address" class="input-text" placeholder="Address" value="' . htmlspecialchars($address) . '" required>
                             </div>
                             
-                            <div class="btn-row">
-                                <a href="settings.php" class="btn-outline">Cancel</a>
-                                <button type="submit" class="btn-primary">Save Changes</button>
+                            <div class="action-buttons-right">
+                                <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                                <button type="submit" class="action-btn done-btn">Save</button>
                             </div>
                         </form>
                     </div>

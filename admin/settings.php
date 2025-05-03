@@ -288,8 +288,7 @@
                                             <td>
                                                 <div class="action-buttons">
                                                     <a href="?action=edit&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
-                                                    <a href="?action=drop&id='.$id.'&name='.$name.'" class="action-btn remove-btn" 
-                                                       onclick="return confirm(\'Are you sure you want to remove this service?\')">Remove</a>
+                                                    <a href="?action=drop&id='.$id.'&name='.$name.'" class="action-btn remove-btn">Remove</a>
                                                 </div>
                                             </td>
                                         </tr>';
@@ -521,7 +520,7 @@
                     <center>
                         <h2>Are you sure?</h2>
                         <a class="close" href="settings.php">&times;</a>
-                        <div class="content">
+                        <div class="content" style="height: 0px;">
                             You want to delete this service<br>(' . substr($nameget, 0, 40) . ').
                         </div>
                         <div style="display: flex;justify-content: center;">
@@ -615,7 +614,7 @@
                         <br><br><br><br>
                             <h2>Service Added Successfully!</h2>
                             <a class="close" href="settings.php">&times;</a>
-                            <div class="content">
+                            <div class="content" style="height: 0px;">
                             </div>
                             <div style="display: flex;justify-content: center;">
                             <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;OK&nbsp;&nbsp;</font></button></a>

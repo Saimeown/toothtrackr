@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && isset($_GE
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/table.css">
     <title>Booking - ToothTrackr</title>
-    <link rel="icon" href="../Media/white-icon/white-ToothTrackr_Logo.png" type="image/png">
+    <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
         .popup {
             animation: transitionIn-Y-bottom 0.5s;

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -18,6 +19,8 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
 
+
+
     <title>Sign up - Toothtrackr</title>
     <style>
         .container {
@@ -25,35 +28,45 @@
         }
     </style>
 
+
 </head>
+
 
 <body>
     <?php
     session_start();
 
+
     $_SESSION["user"] = "";
     $_SESSION["usertype"] = "";
+
 
     date_default_timezone_set('Asia/Kolkata');
     $date = date('Y-m-d');
     $_SESSION["date"] = $date;
 
+
     include("../connection.php");
+
 
     // Include PHPMailer
     require '../vendor/autoload.php'; // Adjust the path if necessary
-    
+   
     use PHPMailer\PHPMailer\PHPMailer;
     use PHPMailer\PHPMailer\Exception;
 
+
     $error = "";
+
 
     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $result = $database->query("SELECT * FROM webuser");
 
+
         $fname = $_SESSION['personal']['fname'] ?? '';
         $lname = $_SESSION['personal']['lname'] ?? '';
         $name = $fname . " " . $lname;
+
 
         $house_no = $_SESSION['personal']['house_no'] ?? '';
         $street = $_SESSION['personal']['street'] ?? '';
@@ -61,14 +74,17 @@
         $city = $_SESSION['personal']['city'] ?? '';
         $province = $_SESSION['personal']['province'] ?? '';
 
+
         $address = $house_no . ', ' . $street . ', ' . $barangay . ', ' . $city . ', ' . $province;
         $address = $database->real_escape_string($address);
+
 
         $dob = $_SESSION['personal']['dob'] ?? '';
         $email = $_POST['newemail'];
         $tele = $_POST['tele'];
         $newpassword = $_POST['newpassword'];
         $cpassword = $_POST['cpassword'];
+
 
         if ($newpassword === $cpassword) {
             $result = $database->query("SELECT * FROM webuser WHERE email='$email';");
@@ -79,14 +95,17 @@
                 $verification_token = bin2hex(random_bytes(32)); // 64-character token
                 $hashed_password = password_hash($newpassword, PASSWORD_DEFAULT);
 
+
                 // Insert user data into the database
-                $query = "INSERT INTO patient (pemail, pname, ppassword, paddress, pdob, ptel, verification_token) 
+                $query = "INSERT INTO patient (pemail, pname, ppassword, paddress, pdob, ptel, verification_token)
                       VALUES ('$email', '$name', '$hashed_password', '$address', '$dob', '$tele', '$verification_token')";
                 $database->query($query);
                 $database->query("INSERT INTO webuser VALUES ('$email', 'p')");
 
+
                 // Send verification email
                 $mail = new PHPMailer(true);
+
 
                 try {
                     // Server settings
@@ -98,10 +117,11 @@
                     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                     $mail->Port = 587;
 
+
                     // Recipients
                     $mail->setFrom('songcodent@gmail.com', 'ToothTrackr'); // Replace with your email
                     $mail->addAddress($email, $name); // Add a recipient
-    
+   
                     // Content
                     $mail->isHTML(true);
                     $mail->Subject = 'Email Verification';
@@ -109,17 +129,20 @@
                     $mail->Body = "Hi $name,<br><br>Please verify your email by clicking the link below:<br><br>
                                 <a href='$verification_link'>Verify Email</a><br><br>Thank you!";
 
+
                     $mail->send();
                     $success = "A verification email has been sent to $email. Please check your inbox.";
                 } catch (Exception $e) {
                     $error = "Failed to send verification email. Error: " . $mail->ErrorInfo;
                 }
 
+
                 // Redirect to a success page or display a message
                 if (empty($error)) {
                     $_SESSION["user"] = $email;
                     $_SESSION["usertype"] = "p";
                     $_SESSION["username"] = $fname;
+
 
                     header('Location: verification-sent.php'); // Create this page to inform the user
                     exit();
@@ -130,6 +153,7 @@
         }
     }
     ?>
+
 
 <nav>
         <ul class="sidebar">
@@ -371,6 +395,7 @@
                         </td>
                     </tr>
 
+
                     <tr>
                         <td class="label-td" colspan="2">
                             <label for="tele" id="tele-label">Mobile Number <span style="color: red">*</span></label>
@@ -382,6 +407,7 @@
                         </td>
                     </tr>
 
+
                     <script>
                         $(document).ready(function () {
                             // Initialize Select2 with search
@@ -391,6 +417,7 @@
                             });
                         });
 
+
                         // Updates the country code field based on the selected country.
                         function updateCountryCode() {
                             let countrySelect = document.getElementById("country");
@@ -398,10 +425,12 @@
                             countryCodeInput.value = countrySelect.value;
                         }
 
+
                         // Prepend the country code to the mobile number on form submission.
                         function addCountryCode() {
                             let countryCode = document.getElementById("countryCode").value;
                             let teleField = document.getElementById("tele");
+
 
                             // Only prepend if both values exist.
                             if (teleField.value && countryCode) {
@@ -411,9 +440,11 @@
                         }
                     </script>
 
+
                     <tr>
                         <td class="label-td" colspan="2">
                             <label for="newpassword">Create Password: <span style="color: red">*</span></label>
+
 
                         </td>
                     </tr>
@@ -438,13 +469,16 @@
                         </td>
                     </tr>
 
+
                     <script>
                         let passwordInput = document.getElementById("newpassword");
                         let popup = document.getElementById("password-popup");
 
+
                         passwordInput.addEventListener("input", function () {
                             validatePassword();
                         });
+
 
                         passwordInput.addEventListener("focus", function () {
                             // Show popup only when the user starts typing
@@ -453,10 +487,12 @@
                             }
                         });
 
+
                         passwordInput.addEventListener("blur", function () {
                             // Hide popup when user leaves the input field
                             popup.style.display = "none";
                         });
+
 
                         function validatePassword() {
                             let password = passwordInput.value;
@@ -466,8 +502,10 @@
                             let number = document.getElementById("number");
                             let special = document.getElementById("special");
 
+
                             let borderColor = "#2f396d";
                             let validCount = 0;
+
 
                             if (password.length === 0) {
                                 passwordInput.style.borderColor = "#2f396d";
@@ -475,7 +513,9 @@
                                 return;
                             }
 
+
                             popup.style.display = "block";
+
 
                             if (password.length >= 8) {
                                 length.innerHTML = "✅ At least 8 characters long";
@@ -486,6 +526,7 @@
                                 length.classList.remove("valid");
                             }
 
+
                             if (/[A-Z]/.test(password)) {
                                 uppercase.innerHTML = "✅ At least one uppercase letter";
                                 uppercase.classList.add("valid");
@@ -494,6 +535,7 @@
                                 uppercase.innerHTML = "❌ At least one uppercase letter";
                                 uppercase.classList.remove("valid");
                             }
+
 
                             if (/[a-z]/.test(password)) {
                                 lowercase.innerHTML = "✅ At least one lowercase letter";
@@ -504,6 +546,7 @@
                                 lowercase.classList.remove("valid");
                             }
 
+
                             if (/\d/.test(password)) {
                                 number.innerHTML = "✅ At least one number";
                                 number.classList.add("valid");
@@ -512,6 +555,7 @@
                                 number.innerHTML = "❌ At least one number";
                                 number.classList.remove("valid");
                             }
+
 
                             if (/[@$!%*?&]/.test(password)) {
                                 special.innerHTML = "✅ At least one special character (@$!%*?&)";
@@ -522,6 +566,7 @@
                                 special.classList.remove("valid");
                             }
 
+
                             if (validCount === 5) {
                                 borderColor = "green";
                             } else if (validCount >= 3) {
@@ -530,9 +575,12 @@
                                 borderColor = "red";
                             }
 
+
                             passwordInput.style.borderColor = borderColor;
                         }
                     </script>
+
+
 
 
                     <tr>
@@ -553,6 +601,7 @@
                         </td>
                     </tr>
 
+
                     <tr>
                         <td colspan="2">
                             <?php if ($error != "") { ?>
@@ -561,12 +610,14 @@
                         </td>
                     </tr>
 
+
                     <script>
                         function validateConfirmPassword() {
                             let password = document.getElementById("newpassword").value;
                             let confirmPassword = document.getElementById("cpassword").value;
                             let confirmPasswordField = document.getElementById("cpassword");
                             let errorMessage = document.getElementById("password-mismatch");
+
 
                             if (confirmPassword.length > 0) {
                                 if (password === confirmPassword) {
@@ -582,6 +633,7 @@
                             }
                         }
                     </script>
+
 
                     <script>
                         // Toggle New Password Visibility
@@ -599,6 +651,7 @@
                             }
                         });
 
+
                         // Toggle Confirm Password Visibility
                         document.getElementById("toggleConfirmPassword").addEventListener("click", function () {
                             let passwordInput = document.getElementById("cpassword");
@@ -614,6 +667,7 @@
                             }
                         });
                     </script>
+
 
                     <tr>
                         <td class="label-td" colspan="2">
@@ -634,9 +688,7 @@
                         <td>
                             <input type="submit" value="Sign up" class="signup-btn">
                         </td>
-
                     </tr>
-
                     <tr>
                         <td colspan="2">
                             <label for="" class="bottom-text">Already have an account? </label>
@@ -651,4 +703,7 @@
     </div>
 </body>
 
+
 </html>
+
+

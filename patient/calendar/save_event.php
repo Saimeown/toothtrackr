@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $dentistNotificationStmt->execute();
         $dentistNotificationStmt->close();
 
-        echo json_encode(['status' => true, 'msg' => 'Appointment added successfully.']);
+        echo json_encode(['status' => true, 'msg' => 'Booking added successfully.']);
     } else {
         echo json_encode(['status' => false, 'msg' => 'Error: ' . $stmt->error]);
     }

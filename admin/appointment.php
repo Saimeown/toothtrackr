@@ -46,6 +46,14 @@ $currentYear = date('Y');
 $daysInMonth = date('t');
 $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
 $currentDay = date('j');
+
+// Success message
+if (isset($_GET['cancel_success'])) {
+    echo '
+    <div class="success-message" style="position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px; border-radius: 5px; z-index: 10000; animation: fadeIn 0.5s, fadeOut 0.5s 2.5s;">
+        Appointment cancelled successfully!
+    </div>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -148,13 +156,31 @@ $currentDay = date('j');
             border-radius: 50%;
             object-fit: cover;
         }
+
+        .form-select, .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
     </style>
 </head>
 
 <body>
 
     <div class="main-container">
-        <div class="sidebar">
+    <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
             </div>
@@ -563,194 +589,256 @@ $currentDay = date('j');
             </div>
         </div>
     </div>
-
-    <?php
-    if ($_GET) {
-        $id = $_GET["id"];
-        $action = $_GET["action"];
-        if ($action == 'drop') {
-            $nameget = $_GET["name"];
-            echo '
-            <div id="popup1" class="overlay">
-                    <div class="popup" style="max-height: 200px;">
-                    <center>
-                        <h2>Are you sure?</h2>
-                        <a class="close" href="appointment.php">&times;</a>
-                        <div class="content">
-                            You want to cancel this appointment<br>(' . substr($nameget, 0, 40) . ').
-                           
-                            <a href="delete-appointment.php?id=' . $id . '" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"<font class="tn-in-text">&nbsp;Yes&nbsp;</font></button></a>&nbsp;&nbsp;&nbsp;
-                        <a href="appointment.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;No&nbsp;&nbsp;</font></button></a>
-                        </div>
-                    </center>
-            </div>
-            </div>
-            ';
-        } elseif ($action == 'view') {
-            $sqlmain = "SELECT 
-                            appointment.appoid, 
-                            appointment.pid, 
-                            appointment.appodate, 
-                            appointment.procedure_id, 
-                            procedures.procedure_name, 
-                            appointment.appointment_time, 
-                            appointment.docid, 
-                            patient.pname, 
-                            patient.pemail,
-                            patient.ptel,
-                            doctor.docname
-                        FROM appointment 
-                        INNER JOIN patient ON appointment.pid = patient.pid 
-                        INNER JOIN doctor ON appointment.docid = doctor.docid 
-                        INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
-                        WHERE appointment.appoid='$id'";
-            $result = $database->query($sqlmain);
-            $row = $result->fetch_assoc();
-            $patient_name = $row["pname"];
-            $dentist_name = $row["docname"];
-            $procedure_name = $row["procedure_name"];
-            $appodate = $row["appodate"];
-            $appointment_time = $row["appointment_time"];
-            $patient_email = $row["pemail"];
-            $patient_tel = $row["ptel"];
-
-            echo '
-            <div id="popup1" class="overlay">
-                <div class="popup">
-                    <center>
-                        <h2>Appointment Details</h2>
-                        <a class="close" href="appointment.php">&times;</a>
-                        <div class="content">
-                            <table width="100%" class="sub-table scrolldown add-doc-form-container" border="0">
-                                <tr>
-                                    <td class="label-td" style="width: 30%;">
-                                        <label for="name" class="form-label">Patient Name:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars($patient_name) . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td">
-                                        <label for="Email" class="form-label">Patient Email:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars($patient_email) . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td">
-                                        <label for="Tele" class="form-label">Patient Phone:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars($patient_tel) . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td">
-                                        <label for="dentist" class="form-label">Dentist:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars($dentist_name) . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td">
-                                        <label for="procedure" class="form-label">Procedure:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars($procedure_name) . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td">
-                                        <label for="date" class="form-label">Appointment Date:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars(date('F j, Y', strtotime($appodate))) . '</td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td">
-                                        <label for="time" class="form-label">Appointment Time:</label>
-                                    </td>
-                                    <td>' . htmlspecialchars(date('g:i A', strtotime($appointment_time))) . '</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2" style="padding-top: 20px;">
-                                        <a href="appointment.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn"></a>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </center>
+        <?php
+        if ($_GET) {
+            $id = $_GET["id"];
+            $action = $_GET["action"];
+            if ($action == 'drop') {
+                $nameget = $_GET["name"];
+                echo '
+                <div id="popup1" class="overlay">
+                    <div class="popup" style="max-height: 400px;">
+                        <center>
+                            <h2>Cancel Appointment</h2>
+                            <a class="close" href="appointment.php">&times;</a>
+                            <div class="content">
+                                <form id="cancelForm" action="delete-appointment.php" method="POST">
+                                    <input type="hidden" name="appoid" value="'.$id.'">
+                                    <input type="hidden" name="source" value="admin">
+                                    
+                                    <p>You are about to cancel the appointment for <strong>'.substr($nameget, 0, 40).'</strong>.</p>
+                                    
+                                    <div style="text-align: left; margin: 20px 0;">
+                                        <label for="cancel_reason" style="display: block; margin-bottom: 8px; font-weight: bold;">Reason for cancellation:</label>
+                                        <select name="cancel_reason" id="cancel_reason" class="form-select" required>
+                                            <option value="">-- Select a reason --</option>
+                                            <option value="Patient request">Patient request</option>
+                                            <option value="Dentist unavailable">Dentist unavailable</option>
+                                            <option value="Clinic emergency">Clinic emergency</option>
+                                            <option value="Rescheduled">Rescheduled</option>
+                                            <option value="Other">Other (please specify)</option>
+                                        </select>
+                                        
+                                        <div id="otherReasonContainer" style="margin-top: 10px; display: none;">
+                                            <label for="other_reason" style="display: block; margin-bottom: 8px;">Please specify:</label>
+                                            <input type="text" name="other_reason" id="other_reason" class="form-input" style="width: 100%;">
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+                                        <button type="submit" class="btn-primary btn" style="padding: 10px 20px;">Confirm Cancellation</button>
+                                        <a href="appointment.php" class="btn btn-secondary" style="padding: 10px 20px;">Cancel</a>
+                                    </div>
+                                </form>
+                            </div>
+                        </center>
+                    </div>
                 </div>
-            </div>';
-        }
-    }
-    ?>
+                
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        const reasonSelect = document.getElementById("cancel_reason");
+                        const otherReasonContainer = document.getElementById("otherReasonContainer");
+                        
+                        reasonSelect.addEventListener("change", function() {
+                            if (this.value === "Other") {
+                                otherReasonContainer.style.display = "block";
+                            } else {
+                                otherReasonContainer.style.display = "none";
+                            }
+                        });
+                        
+                        // Handle form submission
+                        document.getElementById("cancelForm").addEventListener("submit", function(e) {
+                            e.preventDefault();
+                            
+                            const formData = new FormData(this);
+                            
+                            fetch(this.action, {
+                                method: "POST",
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status) {
+                                    // Show success message and reload
+                                    alert(data.message);
+                                    window.location.href = "appointment.php?cancel_success=1";
+                                } else {
+                                    alert("Error: " + data.message);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Error:", error);
+                                alert("An error occurred. Please try again.");
+                            });
+                        });
+                    });
+                </script>
+                ';
+            } elseif ($action == 'view') {
+                $sqlmain = "SELECT 
+                                appointment.appoid, 
+                                appointment.pid, 
+                                appointment.appodate, 
+                                appointment.procedure_id, 
+                                procedures.procedure_name, 
+                                appointment.appointment_time, 
+                                appointment.docid, 
+                                patient.pname, 
+                                patient.pemail,
+                                patient.ptel,
+                                doctor.docname
+                            FROM appointment 
+                            INNER JOIN patient ON appointment.pid = patient.pid 
+                            INNER JOIN doctor ON appointment.docid = doctor.docid 
+                            INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
+                            WHERE appointment.appoid='$id'";
+                $result = $database->query($sqlmain);
+                $row = $result->fetch_assoc();
+                $patient_name = $row["pname"];
+                $dentist_name = $row["docname"];
+                $procedure_name = $row["procedure_name"];
+                $appodate = $row["appodate"];
+                $appointment_time = $row["appointment_time"];
+                $patient_email = $row["pemail"];
+                $patient_tel = $row["ptel"];
 
-    <script>
-        // Function to clear search and redirect
-        function clearSearch() {
-            window.location.href = 'appointment.php';
-        }
-
-        // Search input event listener
-        document.addEventListener('DOMContentLoaded', function () {
-            const searchInput = document.getElementById('searchInput');
-            const clearBtn = document.querySelector('.clear-btn');
-
-            if (clearBtn) {
-                clearBtn.addEventListener('click', function () {
-                    clearSearch();
-                });
+                echo '
+                <div id="popup1" class="overlay">
+                    <div class="popup">
+                        <center>
+                            <h2>Appointment Details</h2>
+                            <a class="close" href="appointment.php">&times;</a>
+                            <div class="content">
+                                <table width="100%" class="sub-table scrolldown add-doc-form-container" border="0">
+                                    <tr>
+                                        <td class="label-td" style="width: 30%;">
+                                            <label for="name" class="form-label">Patient Name:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars($patient_name) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-td">
+                                            <label for="Email" class="form-label">Patient Email:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars($patient_email) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-td">
+                                            <label for="Tele" class="form-label">Patient Phone:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars($patient_tel) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-td">
+                                            <label for="dentist" class="form-label">Dentist:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars($dentist_name) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-td">
+                                            <label for="procedure" class="form-label">Procedure:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars($procedure_name) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-td">
+                                            <label for="date" class="form-label">Appointment Date:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars(date('F j, Y', strtotime($appodate))) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-td">
+                                            <label for="time" class="form-label">Appointment Time:</label>
+                                        </td>
+                                        <td>' . htmlspecialchars(date('g:i A', strtotime($appointment_time))) . '</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" style="padding-top: 20px;">
+                                            <a href="appointment.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn"></a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </center>
+                    </div>
+                </div>';
             }
-        });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Show popup if URL has any action parameter
-            const urlParams = new URLSearchParams(window.location.search);
-            const action = urlParams.get('action');
+        }
+        ?>
 
-            if (action === 'view' || action === 'edit' || action === 'drop' || action === 'add') {
-                const popup = document.getElementById('popup1');
-                if (popup) {
-                    popup.style.display = 'flex';
-                    document.body.style.overflow = 'hidden';
+        <script>
+            // Function to clear search and redirect
+            function clearSearch() {
+                window.location.href = 'appointment.php';
+            }
+
+            // Search input event listener
+            document.addEventListener('DOMContentLoaded', function () {
+                const searchInput = document.getElementById('searchInput');
+                const clearBtn = document.querySelector('.clear-btn');
+
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function () {
+                        clearSearch();
+                    });
                 }
-            }
+            });
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // Show popup if URL has any action parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const action = urlParams.get('action');
 
-
-            // Close button functionality
-            const closeButtons = document.querySelectorAll('.close');
-            closeButtons.forEach(button => {
-                button.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const overlay = this.closest('.overlay');
-                    if (overlay) {
-                        overlay.style.display = 'none';
-                        document.body.style.overflow = '';
-                        // Remove the parameters from URL without reloading
-                        const url = new URL(window.location);
-                        url.searchParams.delete('action');
-                        url.searchParams.delete('id');
-                        url.searchParams.delete('name');
-                        url.searchParams.delete('error');
-                        history.pushState(null, '', url);
+                if (action === 'view' || action === 'edit' || action === 'drop' || action === 'add') {
+                    const popup = document.getElementById('popup1');
+                    if (popup) {
+                        popup.style.display = 'flex';
+                        document.body.style.overflow = 'hidden';
                     }
+                }
+
+                // Close button functionality
+                const closeButtons = document.querySelectorAll('.close');
+                closeButtons.forEach(button => {
+                    button.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        const overlay = this.closest('.overlay');
+                        if (overlay) {
+                            overlay.style.display = 'none';
+                            document.body.style.overflow = '';
+                            // Remove the parameters from URL without reloading
+                            const url = new URL(window.location);
+                            url.searchParams.delete('action');
+                            url.searchParams.delete('id');
+                            url.searchParams.delete('name');
+                            url.searchParams.delete('error');
+                            history.pushState(null, '', url);
+                        }
+                    });
+                });
+
+                // Close popup when clicking outside of it
+                const overlays = document.querySelectorAll('.overlay');
+                overlays.forEach(overlay => {
+                    overlay.addEventListener('click', function (e) {
+                        if (e.target === this) {
+                            this.style.display = 'none';
+                            document.body.style.overflow = '';
+                            // Remove the parameters from URL without reloading
+                            const url = new URL(window.location);
+                            url.searchParams.delete('action');
+                            url.searchParams.delete('id');
+                            url.searchParams.delete('name');
+                            url.searchParams.delete('error');
+                            history.pushState(null, '', url);
+                        }
+                    });
                 });
             });
-
-
-            // Close popup when clicking outside of it
-            const overlays = document.querySelectorAll('.overlay');
-            overlays.forEach(overlay => {
-                overlay.addEventListener('click', function (e) {
-                    if (e.target === this) {
-                        this.style.display = 'none';
-                        document.body.style.overflow = '';
-                        // Remove the parameters from URL without reloading
-                        const url = new URL(window.location);
-                        url.searchParams.delete('action');
-                        url.searchParams.delete('id');
-                        url.searchParams.delete('name');
-                        url.searchParams.delete('error');
-                        history.pushState(null, '', url);
-                    }
-                });
-            });
-        });
-    </script>
+        </script>
+    </div>
 </body>
-
 </html>
