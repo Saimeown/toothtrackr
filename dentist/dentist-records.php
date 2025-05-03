@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Singapore');
 session_start();
 
 if (!isset($_SESSION["user"])) {
@@ -89,7 +90,6 @@ if (isset($_GET['action'])) {
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/animations.css">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
@@ -97,171 +97,318 @@ if (isset($_GET['action'])) {
     <title>Patient Records - ToothTrackr</title>
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
-        .popup {
-            animation: transitionIn-Y-bottom 0.5s;
-        }
-        
-        .overlay {
+        /* Enhanced Modal Styles */
+        .modal-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.8);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
+            z-index: 1000;
         }
-
-        .popup {
+        
+        .modal-content {
             background-color: white;
-            padding: 30px;
             border-radius: 10px;
-            width: 80%;
-            max-width: 800px;
-            max-height: 80vh;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
             position: relative;
+            padding: 30px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
         }
-
-        .close {
+        
+        .modal-close {
             position: absolute;
             top: 15px;
             right: 15px;
-            font-size: 24px;
-            color: #333;
-            text-decoration: none;
+            font-size: 28px;
+            font-weight: bold;
+            color: #555;
             cursor: pointer;
-            z-index: 10000;
+            transition: color 0.2s;
         }
         
-        .record-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .modal-close:hover {
+            color: #000;
         }
         
-        .record-section h3 {
+        .modal-header {
             border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
             margin-bottom: 20px;
         }
         
-        .record-row {
-            display: flex;
+        .modal-header h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        
+        .modal-body {
+            padding: 20px 0;
+        }
+        
+        /* Enhanced Record Styles */
+        .record-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .record-section h3 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        
+        .record-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 15px;
             margin-bottom: 15px;
         }
         
         .record-label {
-            font-weight: bold;
-            width: 250px;
+            font-weight: 600;
+            color: #555;
+            align-self: start;
+        }
+        
+        .record-value {
+            color: #333;
+        }
+        
+        .signature-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            max-width: 400px;
         }
         
         .signature-image {
-            max-width: 300px;
+            max-width: 100%;
             max-height: 150px;
-            border: 1px solid #ddd;
+            display: block;
             margin-top: 10px;
         }
         
-        .record-item {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 5px;
+        /* Dental Records Grid */
+        .dental-records-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
         }
         
-        .record-thumbnail {
-            max-width: 200px;
-            max-height: 150px;
-            display: block;
-            margin-bottom: 10px;
+        .dental-record-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .dental-record-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .record-image-container {
+            height: 200px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+        }
+        
+        .record-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
             cursor: pointer;
+        }
+        
+        .record-details {
+            padding: 15px;
+        }
+        
+        .record-date {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .record-notes {
+            font-size: 0.95em;
+            color: #333;
+            margin-bottom: 15px;
+            word-break: break-word;
+        }
+        
+        .record-actions {
+            display: flex;
+            justify-content: space-between;
         }
         
         .download-btn {
             display: inline-block;
-            padding: 5px 15px;
+            padding: 6px 12px;
             background: #2196F3;
             color: white;
             text-decoration: none;
-            border-radius: 3px;
-            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        
+        .download-btn:hover {
+            background: #0b7dda;
+        }
+        
+        .delete-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #f44336;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        
+        .delete-btn:hover {
+            background: #d32f2f;
+        }
+        
+        /* Form Styles */
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
         }
         
         .form-group {
-            margin: 15px 0;
+            margin-bottom: 20px;
         }
         
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
         }
         
         .form-group input[type="file"],
-        .form-group textarea {
+        .form-group textarea,
+        .form-group input[type="text"],
+        .form-group input[type="date"] {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            font-size: 1em;
         }
         
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.2s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        
+        /* Action Buttons */
         .action-buttons {
             display: flex;
             gap: 10px;
-            justify-content: center;
+            flex-wrap: wrap;
         }
         
         .action-btn {
             padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: 500;
+            border-radius: 4px;
             text-decoration: none;
-            transition: all 0.3s;
+            font-size: 0.9em;
+            text-align: center;
+            transition: all 0.2s;
         }
         
         .vieww-btn {
             background-color: #4CAF50;
             color: white;
-            width: 140px;
-            padding-left: 20px;
         }
         
         .vieww-btn:hover {
             background-color: #45a049;
         }
         
-        .dentalw-btn {
+        .editt-btn {
             background-color: #2196F3;
             color: white;
-            width: 140px;
         }
         
-        .dentalw-btn:hover {
+        .editt-btn:hover {
             background-color: #0b7dda;
         }
         
-        .addw-btn {
+        .addd-btn {
             background-color: #ff9800;
             color: white;
-            width: 140px;
-            padding-left: 27px;
         }
         
-        .addw-btn:hover {
+        .addd-btn:hover {
             background-color: #e68a00;
         }
+
+        .action-btn {
+            width: 170px;
+            border-radius: 50px;
+            padding-left: 40px;
+            height: 30px;
+        }
         
-        .profile-img-small {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            object-fit: cover;
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .record-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .record-label {
+                margin-bottom: 5px;
+            }
+            
+            .dental-records-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 95%;
+                padding: 20px;
+            }
         }
         
         /* Right sidebar styles */
@@ -307,6 +454,53 @@ if (isset($_GET['action'])) {
         .no-results img {
             width: 25%;
             margin-bottom: 20px;
+        }
+        
+        .profile-img-small {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        /* Image preview modal */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            overflow: auto;
+        }
+        
+        .image-modal-content {
+            display: block;
+            margin: auto;
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .close-image {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        
+        .close-image:hover {
+            color: #bbb;
+            text-decoration: none;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -388,84 +582,73 @@ if (isset($_GET['action'])) {
                         
                         <div class="record-section">
                             <h3>Patient Information</h3>
-                            <div class="record-row">
-                                <span class="record-label">Patient ID:</span>
-                                <span>P-<?php echo $patient['pid']; ?></span>
-                            </div>
-                            <div class="record-row">
-                                <span class="record-label">Name:</span>
-                                <span><?php echo $patient['pname']; ?></span>
-                            </div>
-                            <div class="record-row">
-                                <span class="record-label">Email:</span>
-                                <span><?php echo $patient['pemail']; ?></span>
-                            </div>
-                            <div class="record-row">
-                                <span class="record-label">Phone:</span>
-                                <span><?php echo $patient['ptel']; ?></span>
-                            </div>
-                            <div class="record-row">
-                                <span class="record-label">Date of Birth:</span>
-                                <span><?php echo $patient['pdob']; ?></span>
-                            </div>
-                            <div class="record-row">
-                                <span class="record-label">Address:</span>
-                                <span><?php echo $patient['paddress']; ?></span>
+                            <div class="record-grid">
+                                <div class="record-label">Patient ID:</div>
+                                <div class="record-value">P-<?php echo $patient['pid']; ?></div>
+                                
+                                <div class="record-label">Name:</div>
+                                <div class="record-value"><?php echo $patient['pname']; ?></div>
+                                
+                                <div class="record-label">Email:</div>
+                                <div class="record-value"><?php echo $patient['pemail']; ?></div>
+                                
+                                <div class="record-label">Phone:</div>
+                                <div class="record-value"><?php echo $patient['ptel']; ?></div>
+                                
+                                <div class="record-label">Date of Birth:</div>
+                                <div class="record-value"><?php echo $patient['pdob']; ?></div>
+                                
+                                <div class="record-label">Address:</div>
+                                <div class="record-value"><?php echo $patient['paddress']; ?></div>
                             </div>
                         </div>
                         
                         <div class="record-section">
                             <h3>Medical History</h3>
                             <?php if ($medical_history): ?>
-                                <div class="record-row">
-                                    <span class="record-label">In Good Health:</span>
-                                    <span><?php echo $medical_history['good_health']; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Under Medical Treatment:</span>
-                                    <span><?php echo $medical_history['under_treatment']; ?></span>
+                                <div class="record-grid">
+                                    <div class="record-label">In Good Health:</div>
+                                    <div class="record-value"><?php echo $medical_history['good_health']; ?></div>
+                                    
+                                    <div class="record-label">Under Medical Treatment:</div>
+                                    <div class="record-value"><?php echo $medical_history['under_treatment']; ?></div>
+                                    
                                     <?php if ($medical_history['under_treatment'] == 'Yes'): ?>
-                                        <div style="margin-left: 250px;"><?php echo $medical_history['condition_treated']; ?></div>
+                                        <div class="record-label">Condition Treated:</div>
+                                        <div class="record-value"><?php echo $medical_history['condition_treated']; ?></div>
                                     <?php endif; ?>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Serious Illness/Surgery:</span>
-                                    <span><?php echo $medical_history['serious_illness']; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Hospitalized:</span>
-                                    <span><?php echo $medical_history['hospitalized']; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Taking Medication:</span>
-                                    <span><?php echo $medical_history['medication']; ?></span>
+                                    
+                                    <div class="record-label">Serious Illness/Surgery:</div>
+                                    <div class="record-value"><?php echo $medical_history['serious_illness']; ?></div>
+                                    
+                                    <div class="record-label">Hospitalized:</div>
+                                    <div class="record-value"><?php echo $medical_history['hospitalized']; ?></div>
+                                    
+                                    <div class="record-label">Taking Medication:</div>
+                                    <div class="record-value"><?php echo $medical_history['medication']; ?></div>
+                                    
                                     <?php if ($medical_history['medication'] == 'Yes'): ?>
-                                        <div style="margin-left: 250px;"><?php echo $medical_history['medication_specify']; ?></div>
+                                        <div class="record-label">Medication Details:</div>
+                                        <div class="record-value"><?php echo $medical_history['medication_specify']; ?></div>
                                     <?php endif; ?>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Tobacco Use:</span>
-                                    <span><?php echo $medical_history['tobacco']; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Recreational Drug Use:</span>
-                                    <span><?php echo $medical_history['drugs']; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Allergies:</span>
-                                    <span><?php echo $medical_history['allergies'] ? $medical_history['allergies'] : 'None reported'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Blood Pressure:</span>
-                                    <span><?php echo $medical_history['blood_pressure'] ? $medical_history['blood_pressure'] : 'Not recorded'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Bleeding Time:</span>
-                                    <span><?php echo $medical_history['bleeding_time'] ? $medical_history['bleeding_time'] : 'Not recorded'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Other Health Conditions:</span>
-                                    <span><?php echo $medical_history['health_conditions'] ? $medical_history['health_conditions'] : 'None reported'; ?></span>
+                                    
+                                    <div class="record-label">Tobacco Use:</div>
+                                    <div class="record-value"><?php echo $medical_history['tobacco']; ?></div>
+                                    
+                                    <div class="record-label">Recreational Drug Use:</div>
+                                    <div class="record-value"><?php echo $medical_history['drugs']; ?></div>
+                                    
+                                    <div class="record-label">Allergies:</div>
+                                    <div class="record-value"><?php echo $medical_history['allergies'] ? $medical_history['allergies'] : 'None reported'; ?></div>
+                                    
+                                    <div class="record-label">Blood Pressure:</div>
+                                    <div class="record-value"><?php echo $medical_history['blood_pressure'] ? $medical_history['blood_pressure'] : 'Not recorded'; ?></div>
+                                    
+                                    <div class="record-label">Bleeding Time:</div>
+                                    <div class="record-value"><?php echo $medical_history['bleeding_time'] ? $medical_history['bleeding_time'] : 'Not recorded'; ?></div>
+                                    
+                                    <div class="record-label">Other Health Conditions:</div>
+                                    <div class="record-value"><?php echo $medical_history['health_conditions'] ? $medical_history['health_conditions'] : 'None reported'; ?></div>
                                 </div>
                             <?php else: ?>
                                 <p>No medical history recorded for this patient.</p>
@@ -475,53 +658,44 @@ if (isset($_GET['action'])) {
                         <div class="record-section">
                             <h3>Informed Consent</h3>
                             <?php if ($informed_consent): ?>
-                                <div class="record-row">
-                                    <span class="record-label">Consent Date:</span>
-                                    <span><?php echo $informed_consent['consent_date']; ?></span>
+                                <div class="record-grid">
+                                    <div class="record-label">Consent Date:</div>
+                                    <div class="record-value"><?php echo $informed_consent['consent_date']; ?></div>
+                                    
+                                    <div class="record-label">Treatment to be Done:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_treatment_to_be_done'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Drugs/Medications:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_drugs_medications'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Changes to Treatment Plan:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_changes_treatment_plan'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Radiographs (X-rays):</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_radiograph'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Removal of Teeth:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_removal_teeth'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Crowns/Bridges:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_crowns_bridges'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Endodontics (Root Canal):</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_endodontics'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Periodontal Disease Treatment:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_periodontal_disease'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Fillings:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_fillings'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
+                                    
+                                    <div class="record-label">Dentures:</div>
+                                    <div class="record-value"><?php echo $informed_consent['initial_dentures'] == 'y' ? 'Agreed' : 'Not agreed'; ?></div>
                                 </div>
-                                <div class="record-row">
-                                    <span class="record-label">Treatment to be Done:</span>
-                                    <span><?php echo $informed_consent['initial_treatment_to_be_done'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Drugs/Medications:</span>
-                                    <span><?php echo $informed_consent['initial_drugs_medications'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Changes to Treatment Plan:</span>
-                                    <span><?php echo $informed_consent['initial_changes_treatment_plan'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Radiographs (X-rays):</span>
-                                    <span><?php echo $informed_consent['initial_radiograph'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Removal of Teeth:</span>
-                                    <span><?php echo $informed_consent['initial_removal_teeth'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Crowns/Bridges:</span>
-                                    <span><?php echo $informed_consent['initial_crowns_bridges'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Endodontics (Root Canal):</span>
-                                    <span><?php echo $informed_consent['initial_endodontics'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Periodontal Disease Treatment:</span>
-                                    <span><?php echo $informed_consent['initial_periodontal_disease'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Fillings:</span>
-                                    <span><?php echo $informed_consent['initial_fillings'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
-                                <div class="record-row">
-                                    <span class="record-label">Dentures:</span>
-                                    <span><?php echo $informed_consent['initial_dentures'] == 'y' ? 'Agreed' : 'Not agreed'; ?></span>
-                                </div>
+                                
                                 <?php if ($informed_consent['id_signature_path']): ?>
-                                    <div class="record-row">
-                                        <span class="record-label">Signature:</span>
+                                    <div class="signature-container">
+                                        <div class="record-label">Patient Signature:</div>
                                         <img src="<?php echo $informed_consent['id_signature_path']; ?>" alt="Patient Signature" class="signature-image">
                                     </div>
                                 <?php endif; ?>
@@ -533,7 +707,7 @@ if (isset($_GET['action'])) {
                         <div class="record-section">
                             <h3>Dental Records</h3>
                             <div class="action-buttons">
-                                <a href="#" onclick="openDentalRecords(<?php echo $patient['pid']; ?>)" class="action-btn dental-btn">View Dental Records</a>
+                                <a href="#" onclick="openDentalRecords(<?php echo $patient['pid']; ?>)" class="action-btn edit-btn">View Dental Records</a>
                                 <a href="#" onclick="openAddDentalRecord(<?php echo $patient['pid']; ?>)" class="action-btn add-btn">Add Dental Record</a>
                             </div>
                         </div>
@@ -631,9 +805,9 @@ if (isset($_GET['action'])) {
                                                 <td><div class="cell-text"><?php echo $last_appt_date; ?></div></td>
                                                 <td>
                                                     <div class="action-buttons">
-                                                        <a href="dentist-records.php?action=view&id=<?php echo $pid; ?>" class="action-btn vieww-btn">View Records</a>
-                                                        <a href="#" onclick="openDentalRecords(<?php echo $pid; ?>)" class="action-btn dentalw-btn">Dental Records</a>
-                                                        <a href="#" onclick="openAddDentalRecord(<?php echo $pid; ?>)" class="action-btn addw-btn">Add Record</a>
+                                                        <a href="dentist-records.php?action=view&id=<?php echo $pid; ?>" class="action-btn view-btn">View Records</a>
+                                                        <a href="#" onclick="openDentalRecords(<?php echo $pid; ?>)" class="action-btn edit-btn">Dental Records</a>
+                                                        <a href="#" onclick="openAddDentalRecord(<?php echo $pid; ?>)" class="action-btn add-btn">Add Record</a>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -656,48 +830,48 @@ if (isset($_GET['action'])) {
                     <div class="stats-section">
                         <div class="stats-container">
                             <!-- First row -->
-<a href="patient.php" class="stat-box-link">
-    <div class="stat-box">
-        <div class="stat-content">
-            <h1 class="stat-number"><?php echo $patient_count; ?></h1>
-            <p class="stat-label">My Patients</p>
-        </div>
-        <div class="stat-icon">
-            <img src="../Media/Icon/Blue/care.png" alt="Patients Icon">
-        </div>
-    </div>
-</a>
+                            <a href="patient.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php echo $patient_count; ?></h1>
+                                        <p class="stat-label">My Patients</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/care.png" alt="Patients Icon">
+                                    </div>
+                                </div>
+                            </a>
 
-<!-- Second row -->
-<a href="booking.php" class="stat-box-link">
-    <div class="stat-box">
-        <div class="stat-content">
-            <h1 class="stat-number"><?php echo $booking_count; ?></h1>
-            <p class="stat-label">Bookings</p>
-        </div>
-        <div class="stat-icon">
-            <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
-            <?php if ($booking_count > 0): ?>
-                <span class="notification-badge"><?php echo $booking_count; ?></span>
-            <?php endif; ?>
-        </div>
-    </div>
-</a>
+                            <!-- Second row -->
+                            <a href="booking.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php echo $booking_count; ?></h1>
+                                        <p class="stat-label">Bookings</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
+                                        <?php if ($booking_count > 0): ?>
+                                            <span class="notification-badge"><?php echo $booking_count; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
 
-<a href="appointment.php" class="stat-box-link">
-    <div class="stat-box">
-        <div class="stat-content">
-            <h1 class="stat-number"><?php echo $appointment_count; ?></h1>
-            <p class="stat-label">Appointments</p>
-        </div>
-        <div class="stat-icon">
-            <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
-            <?php if ($appointment_count > 0): ?>
-                <span class="notification-badge"><?php echo $appointment_count; ?></span>
-            <?php endif; ?>
-        </div>
-    </div>
-</a>
+                            <a href="appointment.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php echo $appointment_count; ?></h1>
+                                        <p class="stat-label">Appointments</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
+                                        <?php if ($appointment_count > 0): ?>
+                                            <span class="notification-badge"><?php echo $appointment_count; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
                         </div>
                     </div>
 
@@ -794,40 +968,59 @@ if (isset($_GET['action'])) {
     </div>
     
     <!-- Dental Records Popup -->
-    <div id="dentalRecordsPopup" class="overlay">
-        <div class="popup">
-            <a class="close" href="#">&times;</a>
-            <h2>Dental Records</h2>
-            <div class="content" id="dentalRecordsContent">
+    <div id="dentalRecordsPopup" class="modal-container">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div class="modal-header">
+                <h2 id="dentalRecordsTitle">Dental Records</h2>
+            </div>
+            <div class="modal-body" id="dentalRecordsContent">
                 <!-- Content will be loaded via AJAX -->
             </div>
         </div>
     </div>
 
     <!-- Add Dental Record Popup -->
-    <div id="addDentalRecordPopup" class="overlay">
-        <div class="popup">
-            <a class="close" href="#">&times;</a>
-            <h2>Upload Dental Record</h2>
-            <form action="upload-dental-record.php" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="patient_id" id="uploadPatientId">
-                <div class="form-group">
-                    <label>Select Image:</label>
-                    <input type="file" name="dental_record" accept="image/*" required>
-                </div>
-                <div class="form-group">
-                    <label>Notes:</label>
-                    <textarea name="notes" rows="3"></textarea>
-                </div>
-                <button type="submit" class="btn-primary btn">Upload Record</button>
-            </form>
+    <div id="addDentalRecordPopup" class="modal-container">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div class="modal-header">
+                <h2>Upload Dental Record</h2>
+            </div>
+            <div class="modal-body">
+                <form action="upload-dental-record.php" method="POST" enctype="multipart/form-data" class="form-container">
+                    <input type="hidden" name="patient_id" id="uploadPatientId">
+                    <div class="form-group">
+                        <label for="recordDate">Date:</label>
+                        <input type="date" name="record_date" id="recordDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dentalRecord">Select Image:</label>
+                        <input type="file" name="dental_record" id="dentalRecord" accept="image/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notes:</label>
+                        <textarea name="notes" id="notes" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn">Upload Record</button>
+                </form>
+            </div>
         </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="image-modal">
+        <span class="close-image">&times;</span>
+        <img class="image-modal-content" id="modalImage">
     </div>
 
     <script>
     function openDentalRecords(pid) {
-        document.getElementById('dentalRecordsContent').innerHTML = 'Loading...';
+        document.getElementById('dentalRecordsContent').innerHTML = '<p style="text-align: center; padding: 20px;">Loading records...</p>';
         document.getElementById('dentalRecordsPopup').style.display = 'flex';
+        
+        // Set current date as default for the record date
+        document.getElementById('recordDate').valueAsDate = new Date();
         
         // Load dental records via AJAX
         var xhr = new XMLHttpRequest();
@@ -835,9 +1028,20 @@ if (isset($_GET['action'])) {
         xhr.onload = function() {
             if (this.status == 200) {
                 document.getElementById('dentalRecordsContent').innerHTML = this.responseText;
+                document.getElementById('dentalRecordsTitle').textContent = 'Dental Records for ' + document.querySelector('.announcements-title').textContent.replace('Patient Record: ', '');
+                
+                // Attach click handlers to all record images
+                document.querySelectorAll('.record-image').forEach(img => {
+                    img.addEventListener('click', function() {
+                        openImageModal(this.src);
+                    });
+                });
             } else {
-                document.getElementById('dentalRecordsContent').innerHTML = 'Error loading records';
+                document.getElementById('dentalRecordsContent').innerHTML = '<p style="text-align: center; padding: 20px; color: #f44336;">Error loading records. Please try again.</p>';
             }
+        };
+        xhr.onerror = function() {
+            document.getElementById('dentalRecordsContent').innerHTML = '<p style="text-align: center; padding: 20px; color: #f44336;">Network error. Please check your connection.</p>';
         };
         xhr.send();
     }
@@ -851,18 +1055,29 @@ if (isset($_GET['action'])) {
         window.location.href = 'dentist-records.php';
     }
 
-    // Close popups when clicking outside
+    function openImageModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImg = document.getElementById('modalImage');
+        modal.style.display = 'block';
+        modalImg.src = imageSrc;
+    }
+
+    // Close modals when clicking outside
     document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('overlay')) {
+        if (event.target.classList.contains('modal-container')) {
+            event.target.style.display = 'none';
+        }
+        
+        if (event.target.classList.contains('image-modal')) {
             event.target.style.display = 'none';
         }
     });
 
-    // Close popups when clicking the close button
-    document.querySelectorAll('.popup .close').forEach(closeBtn => {
+    // Close modals when clicking the close button
+    document.querySelectorAll('.modal-close, .close-image').forEach(closeBtn => {
         closeBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            this.closest('.overlay').style.display = 'none';
+            this.closest('.modal-container, .image-modal').style.display = 'none';
         });
     });
 
@@ -876,6 +1091,9 @@ if (isset($_GET['action'])) {
                 clearSearch();
             });
         }
+        
+        // Set current date as default for new records
+        document.getElementById('recordDate').valueAsDate = new Date();
     });
     </script>
 </body>

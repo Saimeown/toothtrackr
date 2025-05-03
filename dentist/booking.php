@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Singapore');
 session_start();
 
 if (!isset($_SESSION["user"])) {
@@ -35,81 +36,105 @@ $daysInMonth = date('t');
 $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
 $currentDay = date('j');
 
-// Fetch bookings query
-$sqlmain = "SELECT 
-            appointment.appoid, 
-            procedures.procedure_name, 
-            patient.pname, 
+// Pagination
+$results_per_page = 10;
+$page = isset($_GET['page']) ? $_GET['page'] : 1;
+$start_from = ($page - 1) * $results_per_page;
+
+// Base query with search functionality
+$sqlmain = "SELECT
+            appointment.appoid,
+            procedures.procedure_name,
+            patient.pname,
             patient.pid,
-            appointment.appodate, 
+            appointment.appodate,
             appointment.appointment_time,
             patient.profile_pic
         FROM appointment
         INNER JOIN patient ON appointment.pid = patient.pid
         INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
-        WHERE appointment.docid = '$userid' 
+        WHERE appointment.docid = '$userid'
           AND appointment.status = 'booking'";
+
+// Add search if exists
+if (isset($_GET['search']) && $_GET['search'] != "") {
+    $search = $_GET['search'];
+    $sqlmain .= " AND (patient.pname LIKE '%$search%' OR procedures.procedure_name LIKE '%$search%')";
+}
 
 // Check if filter is applied
 if (isset($_POST['filter'])) {
     $filterDate = $_POST['appodate'];
-    
+   
     if (!empty($filterDate)) {
         $sqlmain .= " AND appointment.appodate = '$filterDate'";
     }
 }
 
-// Execute the query
-$result = $database->query($sqlmain);
-$booking_count = $result->num_rows;
+// Add sorting
+$sort_param = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+$sort_order = ($sort_param === 'oldest') ? 'DESC' : 'ASC';
+$sqlmain .= " ORDER BY appointment.appodate $sort_order, appointment.appointment_time $sort_order";
+
+// Execute the query with pagination
+$sql_pagination = $sqlmain . " LIMIT $start_from, $results_per_page";
+$result = $database->query($sql_pagination);
+
+// Count total records for pagination
+$count_result = $database->query(str_replace("appointment.appoid, procedures.procedure_name, patient.pname, patient.pid, appointment.appodate, appointment.appointment_time, patient.profile_pic", 
+                                          "COUNT(*) as total", $sqlmain));
+$count_row = $count_result->fetch_assoc();
+$total_records = $count_row['total'] ?? 0;
+$total_pages = ceil($total_records / $results_per_page);
+$booking_count = $total_records;
 
 // Handle booking actions
-if ($_GET) {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && isset($_GET['id'])) {
     $id = $_GET["id"];
     $action = $_GET["action"];
 
     // First get appointment details
     $bookingQuery = $database->query("
-        SELECT a.*, p.pid, p.pname, p.pemail, pr.procedure_name 
+        SELECT a.*, p.pid, p.pname, p.pemail, pr.procedure_name
         FROM appointment a
         JOIN patient p ON a.pid = p.pid
         JOIN procedures pr ON a.procedure_id = pr.procedure_id
         WHERE a.appoid = '$id' AND a.docid = '$userid'
     ");
-    
+   
     if ($bookingQuery && $bookingQuery->num_rows > 0) {
         $booking = $bookingQuery->fetch_assoc();
-        
+       
         if ($action == 'accept') {
             $database->query("UPDATE appointment SET status='appointment' WHERE appoid='$id'");
-            
+           
             // Create notification for patient
             $notificationTitle = "Booking Accepted";
-            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " . 
-                                 date('M j, Y', strtotime($booking['appodate'])) . " at " . 
-                                 date('g:i A', strtotime($booking['appointment_time'])) . 
+            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " .
+                                 date('M j, Y', strtotime($booking['appodate'])) . " at " .
+                                 date('g:i A', strtotime($booking['appointment_time'])) .
                                  " has been accepted by Dr. " . $username;
-            
+           
             $notificationQuery = $database->prepare("
                 INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
                 VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
             ");
-            $notificationQuery->bind_param("issi", 
-                $booking['pid'], 
-                $notificationTitle, 
-                $notificationMessage, 
+            $notificationQuery->bind_param("issi",
+                $booking['pid'],
+                $notificationTitle,
+                $notificationMessage,
                 $id
             );
             $notificationQuery->execute();
-            
+           
             header("Location: booking.php");
             exit();
-            
+           
         } elseif ($action == 'reject') {
             // Archive appointment before deleting
             $status = 'rejected';
             $rejectedBy = 'dentist';
-        
+       
             $archiveQuery = $database->prepare("
                 INSERT INTO appointment_archive (
                     appoid, pid, docid, appodate, appointment_time,
@@ -117,34 +142,34 @@ if ($_GET) {
                 )
                 SELECT appoid, pid, docid, appodate, appointment_time,
                        procedure_id, event_name, ?, ?, NOW()
-                FROM appointment 
+                FROM appointment
                 WHERE appoid = ?
             ");
             $archiveQuery->bind_param("ssi", $status, $rejectedBy, $id);
             $archiveQuery->execute();
-        
+       
             // Then delete from appointment table
             $database->query("DELETE FROM appointment WHERE appoid='$id'");
-        
+       
             // Create notification for patient
             $notificationTitle = "Booking Rejected";
-            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " . 
-                                 date('M j, Y', strtotime($booking['appodate'])) . " at " . 
-                                 date('g:i A', strtotime($booking['appointment_time'])) . 
+            $notificationMessage = "Your booking for " . $booking['procedure_name'] . " on " .
+                                 date('M j, Y', strtotime($booking['appodate'])) . " at " .
+                                 date('g:i A', strtotime($booking['appointment_time'])) .
                                  " has been rejected by Dr. " . $username;
-        
+       
             $notificationQuery = $database->prepare("
                 INSERT INTO notifications (user_id, user_type, title, message, related_id, related_type, created_at, is_read)
                 VALUES (?, 'p', ?, ?, ?, 'appointment', NOW(), 0)
             ");
-            $notificationQuery->bind_param("issi", 
-                $booking['pid'], 
-                $notificationTitle, 
-                $notificationMessage, 
+            $notificationQuery->bind_param("issi",
+                $booking['pid'],
+                $notificationTitle,
+                $notificationMessage,
                 $id
             );
             $notificationQuery->execute();
-        
+       
             header("Location: booking.php");
             exit();
         }
@@ -165,7 +190,11 @@ if ($_GET) {
     <title>Bookings - ToothTrackr</title>
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
-        .popup {
+       .popup {
+            animation: transitionIn-Y-bottom 0.5s;
+        }
+
+        .sub-table {
             animation: transitionIn-Y-bottom 0.5s;
         }
         
@@ -187,7 +216,9 @@ if ($_GET) {
             padding: 30px;
             border-radius: 10px;
             width: 80%;
-            max-width: 400px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
             position: relative;
         }
@@ -202,133 +233,90 @@ if ($_GET) {
             cursor: pointer;
             z-index: 10000;
         }
-        
-        /* Right sidebar styles */
-        .right-sidebar {
-            width: 320px;
-        }
-        
-        .stats-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .stat-box {
-            height: 100%;
-        }
-        
-        .notification-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #f44336;
-            color: white;
+
+        .profile-img-small {
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            padding: 3px 6px;
-            font-size: 12px;
+            object-fit: cover;
         }
-        
-        .stat-icon {
-            position: relative;
-        }
-        
-        /* Table styles */
-        .table-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .action-btn {
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.3s;
-            display: inline-block;
-            margin: 0 5px;
-        }
-        
-        .accept-btn {
-            background-color: #4CAF50;
-            color: white;
-        }
-        
-        .accept-btn:hover {
-            background-color: #45a049;
-        }
-        
-        .reject-btn {
-            background-color: #f44336;
-            color: white;
-        }
-        
-        .reject-btn:hover {
-            background-color: #da190b;
-        }
-        
-        .filter-container {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        
-        .filter-form {
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
             display: flex;
+            justify-content: center;
             align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
             gap: 10px;
         }
-        
-        .filter-input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        .filter-btn {
-            padding: 10px 20px;
-            background: #2196F3;
+
+        .btn-primary {
+            background-color: #4CAF50;
             color: white;
             border: none;
+            padding: 10px 20px;
             border-radius: 5px;
             cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
         }
-        
-        .filter-btn:hover {
-            background: #0b7dda;
+
+        .btn-primary:hover {
+            background-color: #45a049;
         }
-        
-        .no-bookings {
-            text-align: center;
-            padding: 40px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            margin: 20px 0;
+
+        .btn-secondary {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
         }
-        
-        .no-bookings img {
-            width: 25%;
-            margin-bottom: 20px;
+
+        .btn-secondary:hover {
+            background-color: #da190b;
         }
+        #modalMessage {
+            height: 30px;
+        }
+
     </style>
 </head>
 
+
 <body>
+
 
     <div class="main-container">
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
             </div>
+
 
             <div class="user-profile">
                 <div class="profile-image">
@@ -339,6 +327,7 @@ if ($_GET) {
                     <?php echo substr($useremail, 0, 30); ?>
                 </p>
             </div>
+
 
             <div class="nav-menu">
                 <a href="dashboard.php" class="nav-item">
@@ -371,6 +360,7 @@ if ($_GET) {
                 </a>
             </div>
 
+
             <div class="log-out">
                 <a href="logout.php" class="nav-item">
                     <img src="../Media/Icon/Blue/logout.png" alt="Log Out" class="nav-icon">
@@ -379,77 +369,144 @@ if ($_GET) {
             </div>
         </div>
 
+
         <div class="content-area">
             <div class="content">
-                <div class="main-section">
-                    <div class="announcements-header">
-                        <h3 class="announcements-title">Booking Manager</h3>
-                        <div class="announcement-filters">
-                            <p style="font-size: 14px;color: rgb(119, 119, 119);padding: 0;margin: 0;">
-                                <?php echo date('F j, Y'); ?>
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div class="filter-container">
-                        <form action="" method="post" class="filter-form">
-                            <input type="date" name="appodate" id="date" class="filter-input">
-                            <input type="submit" name="filter" value="Filter" class="filter-btn">
+            <div class="main-section">
+                    <!-- search bar -->
+                    <div class="search-container">
+                        <form action="" method="GET" style="display: flex; width: 100%;">
+                            <input type="search" name="search" id="searchInput" class="search-input"
+                                placeholder="Search by patient name or procedure"
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <?php if (isset($_GET['search']) && $_GET['search'] != ""): ?>
+                                <button type="button" class="clear-btn" onclick="clearSearch()">×</button>
+                            <?php endif; ?>
                         </form>
                     </div>
-                    
-                    <div class="table-container">
-                        <?php if ($result->num_rows == 0): ?>
-                            <div class="no-bookings">
-                                <img src="../img/notfound.svg" width="25%">
-                                <p class="heading-main12" style="font-size:20px;color:rgb(49, 49, 49)">No pending bookings found!</p>
+
+                    <!-- header -->
+                    <div class="announcements-header">
+                        <h3 class="announcements-title">Manage Bookings</h3>
+                        <div class="announcement-filters">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+                            ?>
+                            <a href="?sort=newest<?php echo $searchParam; ?>"
+                                class="filter-btn newest-btn <?php echo ($currentSort === 'newest' || $currentSort === '') ? 'active' : 'inactive'; ?>">
+                                A-Z
+                            </a>
+
+                            <a href="?sort=oldest<?php echo $searchParam; ?>"
+                                class="filter-btn oldest-btn <?php echo $currentSort === 'oldest' ? 'active' : 'inactive'; ?>">
+                                Z-A
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Date filter form -->
+                    <div class="filter-container">
+                        <form action="" method="post" style="display: flex; gap: 10px; align-items: center;">
+                            <div style="flex-grow: 1;">
+                                <input type="date" name="appodate" id="date" class="input-text filter-container-items" 
+                                    style="margin: 0; width: 100%;" value="<?php echo isset($_POST['appodate']) ? $_POST['appodate'] : ''; ?>">
                             </div>
-                        <?php else: ?>
+                            <div>
+                                <input type="submit" name="filter" value="Filter" class="btn-primary-soft btn button-icon btn-filter">
+                            </div>
+                            <?php if (isset($_POST['filter'])): ?>
+                                <div>
+                                    <a href="booking.php" class="btn-secondary" style="padding: 10px 15px; display: inline-block;">Clear</a>
+                                </div>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+
+                    <?php if ($result->num_rows > 0): ?>
+                        <div class="table-container">
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>Patient</th>
+                                        <th>Profile</th>
+                                        <th>Patient Name</th>
                                         <th>Procedure</th>
                                         <th>Date & Time</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php while ($row = $result->fetch_assoc()): 
-                                        $appoid = $row["appoid"];
-                                        $procedure_name = $row["procedure_name"];
-                                        $pname = $row["pname"];
-                                        $pid = $row["pid"];
-                                        $appodate = $row["appodate"];
-                                        $appointment_time = $row["appointment_time"];
-                                        $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
-                                    ?>
-                                        <tr id="row-<?php echo $appoid; ?>">
+                                    <?php while ($row = $result->fetch_assoc()): ?>
+                                        <tr>
                                             <td>
-                                                <div style="display: flex; align-items: center;">
-                                                    <img src="<?php echo $profile_pic; ?>" alt="<?php echo $pname; ?>" class="profile-img-small" style="margin-right: 10px;">
-                                                    <div>
-                                                        <div><?php echo $pname; ?></div>
-                                                        <small>ID: P-<?php echo $pid; ?></small>
-                                                    </div>
+                                                <?php
+                                                // Check if profile picture exists
+                                                if (!empty($row['profile_pic'])) {
+                                                    $photo = "../" . $row['profile_pic'];
+                                                } else {
+                                                    $photo = "../Media/Icon/Blue/profile.png";
+                                                }
+                                                ?>
+                                                <img src="<?php echo $photo; ?>" alt="<?php echo $row['pname']; ?>"
+                                                    class="profile-img-small">
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['pname']; ?></div>
+                                                <div class="cell-subtext">ID: P-<?php echo $row['pid']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo $row['procedure_name']; ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="cell-text"><?php echo date('M j, Y', strtotime($row['appodate'])); ?></div>
+                                                <div class="cell-subtext"><?php echo date('g:i A', strtotime($row['appointment_time'])); ?></div>
+                                            </td>
+                                            <td>
+                                                <div class="action-buttons">
+                                                    <a href="#" onclick="updateBooking(<?php echo $row['appoid']; ?>, 'accept')" class="action-btn done-btn">Accept</a>
+                                                    <a href="#" onclick="updateBooking(<?php echo $row['appoid']; ?>, 'reject')" class="action-btn remove-btn">Reject</a>
                                                 </div>
-                                            </td>
-                                            <td><?php echo $procedure_name; ?></td>
-                                            <td>
-                                                <?php echo date('M j, Y', strtotime($appodate)); ?><br>
-                                                <small><?php echo date('g:i A', strtotime($appointment_time)); ?></small>
-                                            </td>
-                                            <td>
-                                                <a href="#" onclick="updateBooking(<?php echo $appoid; ?>, 'accept')" class="action-btn accept-btn">Accept</a>
-                                                <a href="#" onclick="updateBooking(<?php echo $appoid; ?>, 'reject')" class="action-btn reject-btn">Reject</a>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
                                 </tbody>
                             </table>
-                        <?php endif; ?>
-                    </div>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="pagination">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $sortParam = '&sort=' . $currentSort;
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+                            $filterParam = isset($_POST['filter']) ? '&filter=1&appodate=' . urlencode($_POST['appodate']) : '';
+
+                            // Previous link
+                            if ($page > 1) {
+                                echo '<a href="?page=' . ($page - 1) . $searchParam . $sortParam . $filterParam . '">&laquo; Previous</a>';
+                            }
+
+                            // Page links
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+
+                            for ($i = $start_page; $i <= $end_page; $i++) {
+                                echo '<a href="?page=' . $i . $searchParam . $sortParam . $filterParam . '"' . ($i == $page ? ' class="active"' : '') . '>' . $i . '</a>';
+                            }
+
+                            // Next link
+                            if ($page < $total_pages) {
+                                echo '<a href="?page=' . ($page + 1) . $searchParam . $sortParam . $filterParam . '">Next &raquo;</a>';
+                            }
+                            ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-results">
+                            <p>No bookings found. Please try a different search or filter.</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
+
 
                 <!-- Right sidebar section -->
                 <div class="right-sidebar">
@@ -468,46 +525,49 @@ if ($_GET) {
                                 </div>
                             </a>
 
+
                             <!-- Second row -->
                             <a href="booking.php" class="stat-box-link">
                                 <div class="stat-box">
                                     <div class="stat-content">
-                                        <h1 class="stat-number"><?php echo $booking_count; ?></h1>
+                                        <h1 class="stat-number"><?php
+                                        $bookingCount = $appointmentrow->fetch_row()[0] ?? 0;
+                                        echo $bookingCount;
+                                        ?></h1>
                                         <p class="stat-label">Bookings</p>
                                     </div>
                                     <div class="stat-icon">
                                         <img src="../Media/Icon/Blue/booking.png" alt="Booking Icon">
-                                        <?php if ($booking_count > 0): ?>
-                                            <span class="notification-badge"><?php echo $booking_count; ?></span>
+                                        <?php if ($bookingCount > 0): ?>
+                                            <span class="notification-badge"><?php echo $bookingCount; ?></span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
                             </a>
 
-                            <?php
-// Get the count once and store it
-$scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
-?>
 
-<a href="appointment.php" class="stat-box-link">
-    <div class="stat-box">
-        <div class="stat-content">
-            <h1 class="stat-number"><?php echo $scheduleCount; ?></h1>
-            <p class="stat-label">Appointments</p>
-        </div>
-        <div class="stat-icon">
-            <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
-            <?php if ($scheduleCount > 0): ?>
-                <span class="notification-badge"><?php echo $scheduleCount; ?></span>
-            <?php endif; ?>
-        </div>
-    </div>
-</a>
+                            <a href="appointment.php" class="stat-box-link">
+                                <div class="stat-box">
+                                    <div class="stat-content">
+                                        <h1 class="stat-number"><?php
+                                        $appointmentCount = $schedulerow->fetch_row()[0] ?? 0;
+                                        echo $appointmentCount;
+                                        ?></h1>
+                                        <p class="stat-label">Appointments</p>
+                                    </div>
+                                    <div class="stat-icon">
+                                        <img src="../Media/Icon/Blue/appointment.png" alt="Appointment Icon">
+                                        <?php if ($appointmentCount > 0): ?>
+                                            <span class="notification-badge"><?php echo $appointmentCount; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </a>
                         </div>
                     </div>
 
+
                     <div class="calendar-section">
-                        <!-- Dynamic Calendar -->
                         <div class="calendar-container">
                             <div class="calendar-header">
                                 <h3 class="calendar-month">
@@ -523,11 +583,13 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
                                 <div class="calendar-day">F</div>
                                 <div class="calendar-day">S</div>
 
+
                                 <?php
                                 // Calculate the previous month's spillover days
                                 $previousMonthDays = $firstDayOfMonth - 1;
                                 $previousMonthLastDay = date('t', strtotime('last month'));
                                 $startDay = $previousMonthLastDay - $previousMonthDays + 1;
+
 
                                 // Display previous month's spillover days
                                 for ($i = 0; $i < $previousMonthDays; $i++) {
@@ -535,14 +597,16 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
                                     $startDay++;
                                 }
 
+
                                 // Display current month's days
                                 for ($day = 1; $day <= $daysInMonth; $day++) {
                                     $class = ($day == $currentDay) ? 'calendar-date today' : 'calendar-date';
                                     echo '<div class="' . $class . '">' . $day . '</div>';
                                 }
 
+
                                 // Calculate and display next month's spillover days
-                                $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth);
+                                $nextMonthDays = 42 - ($previousMonthDays + $daysInMonth); // 42 = 6 rows * 7 days
                                 for ($i = 1; $i <= $nextMonthDays; $i++) {
                                     echo '<div class="calendar-date other-month">' . $i . '</div>';
                                 }
@@ -551,6 +615,7 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
                         </div>
                     </div>
 
+
                     <div class="upcoming-appointments">
                         <h3>Upcoming Appointments</h3>
                         <div class="appointments-content">
@@ -558,13 +623,13 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
                             $upcomingAppointments = $database->query("
                                 SELECT
                                     appointment.appoid,
-                                    procedures.procedure_name,
+                                    patient.pname AS patient_name,
                                     appointment.appodate,
                                     appointment.appointment_time,
-                                    patient.pname as patient_name
+                                    procedures.procedure_name
                                 FROM appointment
-                                INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
                                 INNER JOIN patient ON appointment.pid = patient.pid
+                                INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id
                                 WHERE
                                     appointment.docid = '$userid'
                                     AND appointment.status = 'appointment'
@@ -572,6 +637,7 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
                                 ORDER BY appointment.appodate ASC
                                 LIMIT 3;
                             ");
+
 
                             if ($upcomingAppointments->num_rows > 0) {
                                 while ($appointment = $upcomingAppointments->fetch_assoc()) {
@@ -598,12 +664,13 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
         </div>
     </div>
 
+
     <div id="confirmationModal" class="overlay">
         <div class="popup">
             <center>
                 <h2>Confirm Action</h2>
                 <a class="close" href="#" onclick="closeModal()">&times;</a>
-                <div class="content">
+                <div class="content" style="height: 110px;">
                     <p id="modalMessage">Are you sure you want to proceed?</p>
                 </div>
                 <div style="display: flex;justify-content: center;gap:10px;margin-top:20px;">
@@ -614,9 +681,27 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
         </div>
     </div>
 
+
     <script>
+        // Function to clear search and redirect
+        function clearSearch() {
+            window.location.href = 'booking.php';
+        }
+
+        // Search input event listener
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const clearBtn = document.querySelector('.clear-btn');
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    clearSearch();
+                });
+            }
+        });
         let currentAppoid = null;
         let currentAction = null;
+
 
         function updateBooking(appoid, action) {
             currentAppoid = appoid;
@@ -625,15 +710,19 @@ $scheduleCount = $schedulerow->fetch_row()[0] ?? 0;
             document.getElementById("confirmationModal").style.display = "flex";
         }
 
+
         function confirmAction() {
             window.location.href = `booking.php?action=${currentAction}&id=${currentAppoid}`;
         }
+
 
         function closeModal() {
             document.getElementById("confirmationModal").style.display = "none";
             currentAppoid = null;
             currentAction = null;
         }
+        
     </script>
+    
 </body>
 </html>

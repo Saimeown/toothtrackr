@@ -58,11 +58,11 @@ if (isset($_GET['search'])) {
                WHERE appointment.docid = '$userid' AND patient.status='active' 
                AND (patient.pname LIKE '%$search%' OR patient.pemail LIKE '%$search%' OR patient.ptel LIKE '%$search%') 
                ORDER BY patient.pname $sort_order LIMIT $start_from, $results_per_page";
-               
+
     $sqlmain_inactive = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
                         WHERE appointment.docid = '$userid' AND patient.status='inactive' 
                         AND (patient.pname LIKE '%$search%' OR patient.pemail LIKE '%$search%' OR patient.ptel LIKE '%$search%')";
-                        
+
     $count_query = "SELECT COUNT(DISTINCT patient.pid) as total FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
                    WHERE appointment.docid = '$userid' AND patient.status='active' 
                    AND (patient.pname LIKE '%$search%' OR patient.pemail LIKE '%$search%' OR patient.ptel LIKE '%$search%')";
@@ -70,10 +70,10 @@ if (isset($_GET['search'])) {
     $sqlmain = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
                WHERE appointment.docid = '$userid' AND patient.status='active' 
                ORDER BY patient.pname $sort_order LIMIT $start_from, $results_per_page";
-               
+
     $sqlmain_inactive = "SELECT DISTINCT patient.* FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
                         WHERE appointment.docid = '$userid' AND patient.status='inactive'";
-                        
+
     $count_query = "SELECT COUNT(DISTINCT patient.pid) as total FROM appointment INNER JOIN patient ON appointment.pid = patient.pid 
                    WHERE appointment.docid = '$userid' AND patient.status='active'";
 }
@@ -112,138 +112,136 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
         $resultHistory = $database->query($sqlHistory);
 
         echo '
-        <div id="popup1" class="overlay">
-            <div class="popup">
-                <center>
-                    <a class="close" href="patient.php">&times;</a>
-                    <div style="display: flex;justify-content: center;">
-                        <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
-                            <tr>
-                                <td class="label-td" colspan="2">
-                                    <img src="' . $profile_pic . '" alt="Patient Photo"
-                                        style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; margin-bottom: 20px;">
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">View Details</p><br><br>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2"><label for="name" class="form-label">Patient ID: </label></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">P-' . $id . '<br><br></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2"><label for="name" class="form-label">Name: </label></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">' . $name . '<br><br></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2"><label for="Email" class="form-label">Email: </label></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">' . $email . '<br><br></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2"><label for="Tele" class="form-label">Telephone: </label></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">' . $tel . '<br><br></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2"><label for="spec" class="form-label">Address: </label></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">' . $address . '<br><br></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2"><label for="name" class="form-label">Date of Birth: </label></td>
-                            </tr>
-                            <tr>
-                                <td class="label-td" colspan="2">' . $dob . '<br><br></td>
-                            </tr>';
+        <div id="patientModal" class="modal-container">
+            <div class="modal-content">
+                <span class="modal-close">&times;</span>
+                <div class="modal-body">
+                    <table width="80%" class="patient-details-table" border="0">
+                        <tr>
+                            <td class="label-td" colspan="2">
+                                <img src="' . $profile_pic . '" alt="Patient Photo"
+                                    style="width: 150px; height: 150px; border-radius: 50%; object-fit: cover; margin-bottom: 20px;">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">View Details</p><br><br>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2"><label for="name" class="form-label">Patient ID: </label></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">P-' . $id . '<br><br></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2"><label for="name" class="form-label">Name: </label></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">' . $name . '<br><br></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2"><label for="Email" class="form-label">Email: </label></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">' . $email . '<br><br></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2"><label for="Tele" class="form-label">Telephone: </label></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">' . $tel . '<br><br></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2"><label for="spec" class="form-label">Address: </label></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">' . $address . '<br><br></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2"><label for="name" class="form-label">Date of Birth: </label></td>
+                        </tr>
+                        <tr>
+                            <td class="label-td" colspan="2">' . $dob . '<br><br></td>
+                        </tr>';
 
         if ($resultHistory->num_rows > 0) {
             $rowHistory = $resultHistory->fetch_assoc();
             echo '
-                            <tr>
-                                <td colspan="2" style="padding-top: 20px; text-align: center;">
-                                    <h3>Medical History</h3>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Good Health:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["good_health"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Under Treatment:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["under_treatment"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Had a serious surgical operation:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["condition_treated"] ?: "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Had a serious illness:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["serious_illness"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Hospitalized:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["hospitalized"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Taking any prescription/non-prescription medication:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Medication Specify:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication_specify"] ?: "-") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Use Tobacco:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["tobacco"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Use Alcohol or Dangerous Drugs:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["drugs"] ?? "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Have Allergies:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["allergies"] ?: "No") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Blood Pressure:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["blood_pressure"] ?: "-") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Bleeding Time:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["bleeding_time"] ?: "-") . '</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 10px;"><strong>Health Conditions:</strong></td>
-                                <td style="padding: 10px;">' . htmlspecialchars($rowHistory["health_conditions"] ?: "None") . '</td>
-                            </tr>';
+                        <tr>
+                            <td colspan="2" style="padding-top: 20px; text-align: center;">
+                                <h3>Medical History</h3>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Good Health:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["good_health"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Under Treatment:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["under_treatment"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Had a serious surgical operation:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["condition_treated"] ?: "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Had a serious illness:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["serious_illness"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Hospitalized:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["hospitalized"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Taking any prescription/non-prescription medication:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Medication Specify:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["medication_specify"] ?: "-") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Use Tobacco:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["tobacco"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Use Alcohol or Dangerous Drugs:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["drugs"] ?? "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Have Allergies:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["allergies"] ?: "No") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Blood Pressure:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["blood_pressure"] ?: "-") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Bleeding Time:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["bleeding_time"] ?: "-") . '</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px;"><strong>Health Conditions:</strong></td>
+                            <td style="padding: 10px;">' . htmlspecialchars($rowHistory["health_conditions"] ?: "None") . '</td>
+                        </tr>';
         } else {
             echo '
-                            <tr>
-                                <td colspan="2" style="padding: 20px; text-align: center;">
-                                    <p>No medical history found for this patient.</p>
-                                </td>
-                            </tr>';
+                        <tr>
+                            <td colspan="2" style="padding: 20px; text-align: center;">
+                                <p>No medical history found for this patient.</p>
+                            </td>
+                        </tr>';
         }
 
         echo '
-                            <tr>
-                                <td colspan="2">
-                                    <a href="patient.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn"></a>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </center>
+                        <tr>
+                            <td colspan="2">
+                                <a href="patient.php"><input type="button" value="OK" class="login-btn btn-primary-soft btn"></a>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
             </div>
         </div>';
     } else {
@@ -260,7 +258,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../css/animations.css">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
@@ -269,59 +266,76 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
 
     <style>
-        .popup {
-            animation: transitionIn-Y-bottom 0.5s;
-        }
-
-        .sub-table {
-            animation: transitionIn-Y-bottom 0.5s;
-        }
-        
-        .overlay {
+        /* New Modal Styles */
+        .modal-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.8);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
+            z-index: 1000;
         }
-
-        .popup {
+        
+        .modal-content {
             background-color: white;
-            padding: 30px;
             border-radius: 10px;
             width: 80%;
-            max-width: 600px;
-            max-height: 80vh;
+            max-width: 700px;
+            max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
             position: relative;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
-
-        .close {
+        
+        .modal-close {
             position: absolute;
             top: 15px;
             right: 15px;
-            font-size: 24px;
+            font-size: 28px;
+            font-weight: bold;
             color: #333;
-            text-decoration: none;
             cursor: pointer;
-            z-index: 10000;
+            transition: color 0.2s;
         }
-       
+        
+        .modal-close:hover {
+            color: #000;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .patient-details-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .patient-details-table tr td {
+            padding: 8px 0;
+        }
+        
+        .label-td {
+            font-weight: 600;
+            color: #555;
+        }
+
         .stats-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 15px;
         }
+
         .stat-box {
             height: 100%;
         }
+
         .right-sidebar {
             width: 320px;
         }
@@ -333,14 +347,12 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
             gap: 15px;
             margin-bottom: 15px;
         }
+
         .profile-img-small {
             width: 50px;
             height: 50px;
             border-radius: 50%;
             object-fit: cover;
-        }
-        .view-btn {
-            width: 120px;
         }
         .status-badge {
             padding: 5px 10px;
@@ -348,24 +360,29 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
             font-size: 12px;
             font-weight: bold;
         }
+
         .status-active {
             background-color: #d4edda;
             color: #155724;
         }
+
         .status-inactive {
             background-color: #f8d7da;
             color: #721c24;
         }
+
         .inactive-table {
             opacity: 0.8;
         }
+
         .table-section {
             margin-bottom: 40px;
             background: #fff;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
         }
+
         .table-title {
             font-size: 18px;
             color: #333;
@@ -763,9 +780,9 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
                                         <h4 class="appointment-type">' . htmlspecialchars($appointment['patient_name']) . '</h4>
                                         <p class="appointment-date">' . htmlspecialchars($appointment['procedure_name']) . '</p>
                                         <p class="appointment-date">' .
-                                            htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
-                                            ' • ' .
-                                            htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
+                                        htmlspecialchars(date('F j, Y', strtotime($appointment['appodate']))) .
+                                        ' • ' .
+                                        htmlspecialchars(date('g:i A', strtotime($appointment['appointment_time']))) .
                                         '</p>
                                     </div>';
                                 }
@@ -800,53 +817,53 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
             }
         });
 
-        // Show popup if URL has any action parameter
+        // Show modal if URL has view action parameter
         document.addEventListener('DOMContentLoaded', function () {
             const urlParams = new URLSearchParams(window.location.search);
             const action = urlParams.get('action');
 
             if (action === 'view') {
-                const popup = document.getElementById('popup1');
-                if (popup) {
-                    popup.style.display = 'flex';
+                const modal = document.getElementById('patientModal');
+                if (modal) {
+                    modal.style.display = 'flex';
                     document.body.style.overflow = 'hidden';
                 }
             }
 
-            // Close button functionality
-            const closeButtons = document.querySelectorAll('.close');
-            closeButtons.forEach(button => {
-                button.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const overlay = this.closest('.overlay');
-                    if (overlay) {
-                        overlay.style.display = 'none';
+            // Close modal when clicking close button
+            const closeButton = document.querySelector('.modal-close');
+            if (closeButton) {
+                closeButton.addEventListener('click', function () {
+                    const modal = this.closest('.modal-container');
+                    if (modal) {
+                        modal.style.display = 'none';
                         document.body.style.overflow = '';
-                        // Remove the parameters from URL and reload
+                        // Remove the parameters from URL without reloading
                         const url = new URL(window.location);
                         url.searchParams.delete('action');
                         url.searchParams.delete('id');
-                        window.location.href = url.toString();
+                        window.history.replaceState({}, '', url.toString());
                     }
                 });
-            });
+            }
 
-            // Close popup when clicking outside of it
-            const overlays = document.querySelectorAll('.overlay');
-            overlays.forEach(overlay => {
-                overlay.addEventListener('click', function (e) {
+            // Close modal when clicking outside of it
+            const modal = document.querySelector('.modal-container');
+            if (modal) {
+                modal.addEventListener('click', function (e) {
                     if (e.target === this) {
                         this.style.display = 'none';
                         document.body.style.overflow = '';
-                        // Remove the parameters from URL and reload
+                        // Remove the parameters from URL without reloading
                         const url = new URL(window.location);
                         url.searchParams.delete('action');
                         url.searchParams.delete('id');
-                        window.location.href = url.toString();
+                        window.history.replaceState({}, '', url.toString());
                     }
                 });
-            });
+            }
         });
     </script>
 </body>
+
 </html>

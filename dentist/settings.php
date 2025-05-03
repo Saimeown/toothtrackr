@@ -26,6 +26,58 @@ $currentDay = date('j');
 $patientrow = $database->query("SELECT COUNT(DISTINCT pid) FROM appointment WHERE docid='$userid'");
 $appointmentrow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='booking' AND docid='$userid'");
 $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='appointment' AND docid='$userid'");
+
+// Handle password change
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["change_password"])) {
+    $current_password = $_POST["current_password"];
+    $new_password = $_POST["new_password"];
+    $confirm_password = $_POST["confirm_password"];
+    
+    // Verify current password
+    $sql = "SELECT * FROM doctor WHERE docemail='$useremail'";
+    $result = $database->query($sql);
+    $user = $result->fetch_assoc();
+    
+    if (password_verify($current_password, $user["docpassword"])) {
+        if ($new_password === $confirm_password) {
+            // Update password
+            $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+            $update_sql = "UPDATE doctor SET docpassword='$hashed_password' WHERE docemail='$useremail'";
+            $database->query($update_sql);
+            
+            $_SESSION["password_change_success"] = "Password changed successfully!";
+            header("Location: settings.php");
+            exit();
+        } else {
+            $_SESSION["password_change_error"] = "New passwords do not match!";
+        }
+    } else {
+        $_SESSION["password_change_error"] = "Current password is incorrect!";
+    }
+}
+
+// Handle profile update
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
+    $userid = $_POST["user_id"];
+    $name = $_POST["name"];
+    $email = $_POST["email"];
+    $tele = $_POST["Tele"];
+    
+    // Update query
+    $update_query = "UPDATE doctor SET docname=?, docemail=?, doctel=? WHERE docid=?";
+    $stmt = $database->prepare($update_query);
+    $stmt->bind_param("sssi", $name, $email, $tele, $userid);
+    $stmt->execute();
+    
+    // Update session email if changed
+    if ($email != $useremail) {
+        $_SESSION["user"] = $email;
+    }
+    
+    $_SESSION["profile_update_success"] = "Profile updated successfully!";
+    header("Location: settings.php");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -38,62 +90,34 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="stylesheet" href="../css/table.css">
     <title>Settings - ToothTrackr</title>
-    <link rel="icon" href="../Media/Icon/white-icon/white-ToothTrackr_Logo.png" type="image/png">
+    <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
-        .popup {
-            animation: transitionIn-Y-bottom 0.5s;
+        .dashbord-tables {
+            animation: transitionIn-Y-over 0.5s;
+        }
+
+        .filter-container {
+            animation: transitionIn-X 0.5s;
         }
 
         .sub-table {
             animation: transitionIn-Y-bottom 0.5s;
         }
 
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .popup {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            width: 80%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            position: relative;
-        }
-
-        .close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 24px;
-            color: #333;
-            text-decoration: none;
-            cursor: pointer;
-            z-index: 10000;
-        }
-
-        .profile-img-small {
-            width: 50px;
-            height: 50px;
+        .image-preview {
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
             object-fit: cover;
+            margin: 0 auto 20px;
+            display: block;
         }
-
-        /* Modal styles */
-        .modal {
+        
+        /* Popup styles */
+        .overlay {
             position: fixed;
             top: 0;
             left: 0;
@@ -105,54 +129,190 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
             align-items: center;
             z-index: 1000;
         }
-
-        .modal-content {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            width: 400px;
-            max-width: 90%;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        
+        .popup {
+            max-width: 600px;
+            width: 90%;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            padding: 30px;
+            overflow: hidden;
+            animation: fadeIn 0.3s;
         }
-
-        .modal-buttons {
-            margin-top: 20px;
+        
+        .popup-header {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+        
+        .popup-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        
+        .close {
+            font-size: 24px;
+            color: #999;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .close:hover {
+            color: #e74c3c;
+        }
+        
+        .popup-content {
+            padding: 10px 0;
+        }
+        
+        .popup-form .label-td {
+            padding: 8px 0;
+        }
+        
+        .popup-form .form-label {
+            font-weight: 500;
+            color: #555;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .popup-form .input-text {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 15px;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        
+        .popup-form .input-text:focus {
+            outline: none;
+            border-color: #2ecc71;
+            box-shadow: 0 0 5px rgba(46, 204, 113, 0.3);
+        }
+        
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 5px 0 15px;
+        }
+        
+        .radio-option, .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-row {
+            display: flex;
+            justify-content: flex-end;
             gap: 10px;
+            margin-top: 20px;
         }
-
+        
         .btn-primary {
-            background-color: #4CAF50;
+            background-color: #2ecc71;
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
+            border-radius: 8px;
             font-weight: 500;
-            transition: background-color 0.3s;
+            cursor: pointer;
+            transition: all 0.3s;
         }
-
+        
         .btn-primary:hover {
-            background-color: #45a049;
+            background-color: #27ae60;
         }
-
-        .btn-secondary {
-            background-color: #f44336;
-            color: white;
-            border: none;
+        
+        .btn-outline {
+            background-color: white;
+            color: #555;
+            border: 1px solid #ddd;
             padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
+            border-radius: 8px;
             font-weight: 500;
-            transition: background-color 0.3s;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-outline:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .form-section {
+            margin-bottom: 20px;
+        }
+        
+        .form-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .btn-secondary:hover {
-            background-color: #da190b;
+        .clear-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            padding: 0 5px;
         }
 
+        .clear-btn:hover {
+            color: #555;
+        }
+
+        /* Right sidebar adjustments */
         .right-sidebar {
             width: 320px;
         }
@@ -160,7 +320,6 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
         .stats-container {
             display: flex;
             flex-direction: column;
-            grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-bottom: 15px;
         }
@@ -184,61 +343,43 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
             position: relative;
         }
 
-        .settings-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding: 20px;
+        /* File input styling */
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
         }
 
-        .settings-tab {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
+        .file-input-label {
+            display: inline-block;
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
         }
 
-        .settings-tab:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .file-input-label:hover {
+            background-color: #27ae60;
         }
 
-        .settings-icon {
-            width: 40px;
-            height: 40px;
-            background-color: #e3f2fd;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .file-input {
+            display: none;
         }
 
-        .settings-icon img {
-            width: 24px;
-            height: 24px;
-        }
-
-        .settings-content h3 {
-            margin: 0;
-            font-size: 18px;
-            color: #333;
-        }
-
-        .settings-content p {
-            margin: 5px 0 0;
-            font-size: 14px;
-            color: #777;
+        .file-preview {
+            margin-top: 10px;
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            display: none;
         }
     </style>
 </head>
 
 <body>
-    <div class="main-container">
+    <div class="nav-container">
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
@@ -248,7 +389,6 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
                 <div class="profile-image">
                     <?php
                     $userphoto = $userfetch["photo"];
-
                     if (!empty($userphoto) && file_exists("../admin/uploads/" . $userphoto)) {
                         $photopath = "../admin/uploads/" . $userphoto;
                     } else {
@@ -305,33 +445,104 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
         <div class="content-area">
             <div class="content">
                 <div class="main-section">
-                    <!-- header -->
-                    <div class="announcements-header">
-                        <h3 class="announcements-title">Settings</h3>
+                    <!-- search bar -->
+                    <div class="search-container">
+                        <form action="" method="GET" style="display: flex; width: 100%; position: relative;">
+                            <input type="search" name="search" id="searchInput" class="search-input" 
+                                placeholder="Search settings"
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <?php if (isset($_GET['search']) && $_GET['search'] != ""): ?>
+                                <button type="button" class="clear-btn" onclick="clearSearch()">×</button>
+                            <?php endif; ?>
+                        </form>
                     </div>
 
-                    <div class="settings-container">
-                        <a href="javascript:void(0);" onclick="showOverlay('editOverlay')" class="non-style-link">
-                            <div class="settings-tab">
-                                <div class="settings-icon">
-                                    <img src="../Media/Icon/Blue/edit.png" alt="Edit">
-                                </div>
-                                <div class="settings-content">
-                                    <h3>Account Settings</h3>
-                                    <p>Edit your Account Details & Change Password</p>
-                                </div>
+                    <!-- Display success/error messages -->
+                    <?php if (isset($_SESSION["profile_update_success"])): ?>
+                        <div class="alert alert-success">
+                            <?php echo $_SESSION["profile_update_success"]; unset($_SESSION["profile_update_success"]); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_SESSION["password_change_success"])): ?>
+                        <div class="alert alert-success">
+                            <?php echo $_SESSION["password_change_success"]; unset($_SESSION["password_change_success"]); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_SESSION["password_change_error"])): ?>
+                        <div class="alert alert-error">
+                            <?php echo $_SESSION["password_change_error"]; unset($_SESSION["password_change_error"]); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_SESSION["profile_pic_success"])): ?>
+                        <div class="alert alert-success">
+                            <?php echo $_SESSION["profile_pic_success"]; unset($_SESSION["profile_pic_success"]); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_SESSION["profile_pic_error"])): ?>
+                        <div class="alert alert-error">
+                            <?php echo $_SESSION["profile_pic_error"]; unset($_SESSION["profile_pic_error"]); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Settings Cards -->
+                    <div id="settings-container">
+                        <!-- Personal Details Card -->
+                        <a href="?action=edit_profile&id=<?php echo $userid ?>" class="settings-card">
+                            <div class="settings-icon">
+                                <img src="../Media/Icon/Blue/edit.png" alt="Personal Details">
+                            </div>
+                            <div class="settings-info">
+                                <h3 class="settings-title">Personal Details</h3>
+                                <p class="settings-description">Edit your personal details</p>
+                            </div>
+                            <div class="settings-arrow">
+                                <span>›</span>
                             </div>
                         </a>
-
-                        <a href="javascript:void(0);" onclick="showOverlay('viewOverlay')" class="non-style-link">
-                            <div class="settings-tab">
-                                <div class="settings-icon">
-                                    <img src="../Media/Icon/Blue/view.png" alt="View">
-                                </div>
-                                <div class="settings-content">
-                                    <h3>View Account Details</h3>
-                                    <p>View Personal information About Your Account</p>
-                                </div>
+                        
+                        <!-- Change Profile Picture Card -->
+                        <a href="?action=change_profile_picture&id=<?php echo $userid ?>" class="settings-card">
+                            <div class="settings-icon">
+                                <img src="../Media/Icon/Blue/profile.png" alt="Profile Picture">
+                            </div>
+                            <div class="settings-info">
+                                <h3 class="settings-title">Profile Picture</h3>
+                                <p class="settings-description">Change or remove your profile picture</p>
+                            </div>
+                            <div class="settings-arrow">
+                                <span>›</span>
+                            </div>
+                        </a>
+                        
+                        <!-- Password Card -->
+                        <a href="?action=change_password&id=<?php echo $userid ?>" class="settings-card">
+                            <div class="settings-icon">
+                                <img src="../Media/Icon/Blue/lock.png" alt="Password">
+                            </div>
+                            <div class="settings-info">
+                                <h3 class="settings-title">Password</h3>
+                                <p class="settings-description">Change your password</p>
+                            </div>
+                            <div class="settings-arrow">
+                                <span>›</span>
+                            </div>
+                        </a>
+                        
+                        <!-- Deactivate Account Card -->
+                        <a href="?action=deactivate_account&id=<?php echo $userid ?>" class="settings-card">
+                            <div class="settings-icon">
+                                <img src="../Media/Icon/Blue/x.png" alt="Deactivate">
+                            </div>
+                            <div class="settings-info">
+                                <h3 class="settings-title danger-text">Deactivate Account</h3>
+                                <p class="settings-description">This will deactivate your account</p>
+                            </div>
+                            <div class="settings-arrow">
+                                <span>›</span>
                             </div>
                         </a>
                     </div>
@@ -487,189 +698,212 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
             </div>
         </div>
     </div>
-
-    <!-- View Account Popup -->
-    <div id="viewOverlay" class="overlay" style="display: none;">
-        <div class="popup">
-            <center>
-                <h2></h2>
-                <a class="close" href="javascript:void(0);" onclick="hideOverlay('viewOverlay')">&times;</a>
-                <div class="content" style="height: 0px;">
-                    Songco Dental Clinic<br>
+    
+    <?php
+    if ($_GET) {
+        $id = $_GET["id"];
+        $action = $_GET["action"];
+        
+        if ($action == 'deactivate_account') {
+            $sqlmain = "select * from doctor where docid='$id'";
+            $result = $database->query($sqlmain);
+            $row = $result->fetch_assoc();
+            $name = $row["docname"];
+            
+            echo '
+            <div id="popup1" class="overlay">
+                <div class="popup">
+                    <div class="popup-header">
+                        <h2 class="popup-title">Deactivate Account</h2>
+                        <a class="close" href="settings.php">×</a>
+                    </div>
+                    <div class="popup-content">
+                        <p>Are you sure you want to deactivate your account?</p>
+                        <p>This will remove <strong>' . substr($name, 0, 40) . '</strong> from the system.</p>
+                        
+                        <div class="btn-row">
+                            <a href="settings.php" class="btn-outline">Cancel</a>
+                            <a href="delete-account.php?id=' . $id . '" class="btn-danger">Deactivate</a>
+                        </div>
+                    </div>
                 </div>
-                <div style="display: flex;justify-content: center;">
-                    <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
-                        <tr>
-                            <td>
-                                <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">View Details.</p><br><br>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label-td" colspan="2">
-                                <label for="name" class="form-label">Name: </label>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label-td" colspan="2">
-                                <?php echo $username; ?><br><br>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label-td" colspan="2">
-                                <label for="Email" class="form-label">Email: </label>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label-td" colspan="2">
-                                <?php echo $useremail; ?><br><br>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label-td" colspan="2">
-                                <label for="Tele" class="form-label">Telephone: </label>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="label-td" colspan="2">
-                                <?php echo $userfetch['doctel']; ?><br><br>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2">
-                                <button onclick="hideOverlay('viewOverlay')" class="login-btn btn-primary-soft btn">OK</button>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </center>
-            <br><br>
-        </div>
-    </div>
-
-    <!-- Edit Account Popup -->
-    <div id="editOverlay" class="overlay" style="display: none;">
-        <div class="popup">
-            <center>
-                <a class="close" href="javascript:void(0);" onclick="hideOverlay('editOverlay')">&times;</a> 
-                <div style="display: flex;justify-content: center;">
-                    <div class="abc">
-                        <form action="edit-doc.php" method="POST" class="add-new-form" enctype="multipart/form-data">
-                            <table width="80%" class="sub-table scrolldown add-doc-form-container" border="0">
-                                <tr>
-                                    <td>
-                                        <p style="padding: 0;margin: 0;text-align: left;font-size: 25px;font-weight: 500;">Edit Dentist Details.</p>
-                                        Dentist ID : <?php echo $userid; ?> (Auto Generated)<br><br>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <label for="Email" class="form-label">Email: </label>
-                                        <input type="hidden" value="<?php echo $userid; ?>" name="id00">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <input type="hidden" name="oldemail" value="<?php echo $useremail; ?>">
-                                        <input type="email" name="email" class="input-text" placeholder="Email Address" value="<?php echo $useremail; ?>" required><br>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <label for="name" class="form-label">Name: </label>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <input type="text" name="name" class="input-text" placeholder="Dentist Name" value="<?php echo $username; ?>" required><br>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <label for="Tele" class="form-label">Telephone: </label>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <input type="tel" name="Tele" class="input-text" placeholder="Telephone Number" value="<?php echo $userfetch['doctel']; ?>" required><br>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <label for="photo" class="form-label">Profile Photo: </label>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <input type="file" name="photo" id="photo" class="input-text" accept="image/*">
-                                        <br><br>
-                                        <?php
-                                        $currentPhoto = $userfetch["photo"] ?? '';
-                                        if ($currentPhoto) {
-                                            echo '<img src="../admin/uploads/' . $currentPhoto . '" alt="Current Photo" style="width: 100px; height: 100px; border-radius: 10%;">';
-                                        } else {
-                                            echo '<p>No photo uploaded.</p>';
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <label for="password" class="form-label">Password: </label>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <input type="password" name="password" class="input-text" placeholder="Defind a Password" required><br>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <label for="cpassword" class="form-label">Conform Password: </label>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="label-td" colspan="2">
-                                        <input type="password" name="cpassword" class="input-text" placeholder="Conform Password" required><br>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2">
-                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn">
-                                        <input type="submit" value="Save" class="login-btn btn-primary btn">
-                                    </td>
-                                </tr>
-                            </table>
+            </div>';
+        } elseif ($action == 'change_password') {
+            echo '
+            <div id="popup1" class="overlay">
+                <div class="popup">
+                    <div class="popup-header">
+                        <h2 class="popup-title">Change Password</h2>
+                        <a class="close" href="settings.php">×</a>
+                    </div>
+                    <div class="popup-content">
+                        <form action="settings.php" method="POST" class="popup-form">
+                            <input type="hidden" name="change_password" value="1">
+                            
+                            <div class="label-td">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <input type="password" name="current_password" class="input-text" placeholder="Enter current password" required>
+                            </div>
+                            
+                            <div class="label-td">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" name="new_password" class="input-text" placeholder="Enter new password" required>
+                            </div>
+                            
+                            <div class="label-td">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" name="confirm_password" class="input-text" placeholder="Confirm new password" required>
+                            </div>
+                            
+                            <div class="btn-row">
+                                <a href="settings.php" class="btn-outline">Cancel</a>
+                                <button type="submit" class="btn-primary">Change Password</button>
+                            </div>
                         </form>
                     </div>
                 </div>
-            </center>
-            <br><br>
-        </div>
-    </div>
+            </div>';
+        } elseif ($action == 'edit_profile') {
+            // Fetching user details
+            $sqlmain = "SELECT * FROM doctor WHERE docid='$id'";
+            $result = $database->query($sqlmain);
+            $row = $result->fetch_assoc();
+            $name = $row["docname"];
+            $email = $row["docemail"];
+            $tele = $row['doctel'];
 
+            echo '
+            <div id="popup1" class="overlay">
+                <div class="popup">
+                    <div class="popup-header">
+                        <h2 class="popup-title">Edit Personal Details</h2>
+                        <a class="close" href="settings.php">×</a>
+                    </div>
+                    <div class="popup-content">
+                        <form action="settings.php" method="POST" class="popup-form">
+                            <input type="hidden" name="update_profile" value="1">
+                            <input type="hidden" name="user_id" value="' . $id . '">
+                            
+                            <div class="label-td">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" name="email" class="input-text" placeholder="Email Address" value="' . htmlspecialchars($email) . '" required>
+                            </div>
+                            
+                            <div class="label-td">
+                                <label for="name" class="form-label">Name</label>
+                                <input type="text" name="name" class="input-text" placeholder="Name" value="' . htmlspecialchars($name) . '" required>
+                            </div>
+                            
+                            <div class="label-td">
+                                <label for="Tele" class="form-label">Telephone</label>
+                                <input type="tel" name="Tele" class="input-text" placeholder="Telephone Number" value="' . htmlspecialchars($tele) . '" required>
+                            </div>
+                            
+                            <div class="btn-row">
+                                <a href="settings.php" class="btn-outline">Cancel</a>
+                                <button type="submit" class="btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>';
+        } elseif ($action == 'change_profile_picture') {
+            // Fetch current photo
+            $sqlmain = "SELECT photo FROM doctor WHERE docid='$id'";
+            $result = $database->query($sqlmain);
+            $row = $result->fetch_assoc();
+            $current_photo = $row["photo"];
+            $photopath = !empty($current_photo) && file_exists("../admin/uploads/" . $current_photo) 
+                ? "../admin/uploads/" . $current_photo 
+                : "../Media/Icon/Blue/profile.png";
+
+            echo '
+            <div id="popup1" class="overlay">
+                <div class="popup">
+                    <div class="popup-header">
+                        <h2 class="popup-title">Change Profile Picture</h2>
+                        <a class="close" href="settings.php">×</a>
+                    </div>
+                    <div class="popup-content">
+                        <form action="update-profile-pic.php" method="POST" class="popup-form" enctype="multipart/form-data">
+                            <input type="hidden" name="upload_photo" value="1">
+                            
+                            <div class="form-section">
+                                <div class="label-td">
+                                    <label for="profile_picture" class="form-label">Current Profile Picture</label>
+                                    <img src="' . $photopath . '" alt="Profile Picture" class="image-preview">
+                                </div>
+                                
+                                <div class="label-td">
+                                    <label for="profile_picture" class="form-label">Upload New Picture</label>
+                                    <div class="file-input-wrapper">
+                                        <label for="profile_picture" class="file-input-label">Choose File</label>
+                                        <input type="file" id="profile_picture" name="profile_picture" class="file-input" accept="image/*">
+                                    </div>
+                                    <img id="file-preview" class="file-preview" alt="Preview">
+                                    <p style="font-size: 12px; color: #777;">Accepted formats: JPG, PNG, GIF. Max size: 5MB</p>
+                                </div>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <button type="submit" class="action-btn done-btn">Upload</button>
+                                <button type="submit" name="delete_photo" value="1" class="action-btn remove-btn" 
+                                    onclick="return confirm(\'Are you sure you want to remove your profile picture?\')">Remove</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>';
+        }
+    }
+    ?>
     <script>
-        // Function to show overlay by ID
-        function showOverlay(id) {
-            document.getElementById(id).style.display = 'flex';
+        // Function to clear search and redirect
+        function clearSearch() {
+            window.location.href = 'settings.php';
         }
 
-        // Function to hide overlay by ID
-        function hideOverlay(id) {
-            document.getElementById(id).style.display = 'none';
-        }
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('searchInput');
+            const settingsCards = document.querySelectorAll('.settings-card');
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    
+                    settingsCards.forEach(card => {
+                        const title = card.querySelector('.settings-title').textContent.toLowerCase();
+                        const description = card.querySelector('.settings-description').textContent.toLowerCase();
+                        
+                        if (title.includes(searchTerm) || description.includes(searchTerm)) {
+                            card.style.display = 'flex';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
 
-        // Close popups when clicking the close button
-        document.addEventListener('DOMContentLoaded', function() {
-            const closeButtons = document.querySelectorAll('.close');
-            closeButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const overlay = this.closest('.overlay');
-                    if (overlay) {
-                        overlay.style.display = 'none';
+            // File input preview
+            const fileInput = document.getElementById('profile_picture');
+            const filePreview = document.getElementById('file-preview');
+            
+            if (fileInput && filePreview) {
+                fileInput.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            filePreview.src = e.target.result;
+                            filePreview.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        filePreview.style.display = 'none';
                     }
                 });
-            });
+            }
         });
     </script>
 </body>

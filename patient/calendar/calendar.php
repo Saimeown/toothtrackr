@@ -110,7 +110,7 @@
     $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
     $currentDay = date('j');
 
-    $doctors = $database->query("SELECT docid, docname FROM doctor");
+    $doctors = $database->query("SELECT docid, docname FROM doctor where status = 'active'");
     $doctor_options = '';
     while ($doctor = $doctors->fetch_assoc()) {
         $doctor_options .= '<option value="' . $doctor['docid'] . '">' . $doctor['docname'] . '</option>';

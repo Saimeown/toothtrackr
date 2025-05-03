@@ -19,7 +19,7 @@ while ($procedure = $procedures->fetch_assoc()) {
     $procedure_options .= '<option value="' . $procedure['procedure_id'] . '">' . $procedure['procedure_name'] . '</option>';
 }
 
-$doctors = $database->query("SELECT docid, docname FROM doctor");
+$doctors = $database->query("SELECT docid, docname FROM doctor where status = 'active'");
 $doctor_options = '';
 while ($doctor = $doctors->fetch_assoc()) {
     $doctor_options .= '<option value="' . $doctor['docid'] . '">' . $doctor['docname'] . '</option>';

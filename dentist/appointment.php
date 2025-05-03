@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Singapore');
 session_start();
 
 if (!isset($_SESSION["user"]) || $_SESSION['usertype'] != 'd') {
@@ -14,6 +15,25 @@ $userrow = $database->query("SELECT * FROM doctor WHERE docemail='$useremail'");
 $userfetch = $userrow->fetch_assoc();
 $userid = $userfetch["docid"];
 $username = $userfetch["docname"];
+
+// Pagination
+$results_per_page = 10;
+
+// Determine which page we're on
+if (isset($_GET['page'])) {
+    $page = $_GET['page'];
+} else {
+    $page = 1;
+}
+
+// Calculate the starting limit for SQL
+$start_from = ($page - 1) * $results_per_page;
+
+// Search functionality
+$search = "";
+$sort_param = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+$sort_order = ($sort_param === 'oldest') ? 'DESC' : 'ASC';
+
 
 $today = date('Y-m-d');
 $currentMonth = date('F');
@@ -40,7 +60,7 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/table.css">
     <title>My Appointments - ToothTrackr</title>
-    <link rel="icon" href="../Media/Icon/white-icon/white-ToothTrackr_Logo.png" type="image/png">
+    <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
         .popup {
             animation: transitionIn-Y-bottom 0.5s;
@@ -173,30 +193,6 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
             display: none;
         }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .action-btn {
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.3s;
-        }
-
-        .cancel-btn {
-            background-color: #f44336;
-            color: white;
-            width: 80px;
-        }
-
-        .cancel-btn:hover {
-            background-color: #da190b;
-        }
-
         .right-sidebar {
             width: 320px;
         }
@@ -298,27 +294,36 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
         <div class="content-area">
             <div class="content">
                 <div class="main-section">
+                    <!-- search bar -->
+                    <div class="search-container">
+                        <form action="" method="GET" style="display: flex; width: 100%;">
+                            <input type="search" name="search" id="searchInput" class="search-input"
+                                placeholder="Search by patient name, dentist name or procedure"
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <?php if (isset($_GET['search']) && $_GET['search'] != ""): ?>
+                                <button type="button" class="clear-btn" onclick="clearSearch()">×</button>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+
                     <!-- header -->
                     <div class="announcements-header">
                         <h3 class="announcements-title">Manage Appointments</h3>
-                    </div>
+                        <div class="announcement-filters">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+                            ?>
+                            <a href="?sort=newest<?php echo $searchParam; ?>"
+                                class="filter-btn newest-btn <?php echo ($currentSort === 'newest' || $currentSort === '') ? 'active' : 'inactive'; ?>">
+                                A-Z
+                            </a>
 
-                    <!-- Date filter form -->
-                    <div class="filter-container">
-                        <form action="" method="post" style="display: flex; gap: 10px; align-items: center;">
-                            <div style="flex-grow: 1;">
-                                <input type="date" name="appodate" id="date" class="input-text filter-container-items" 
-                                    style="margin: 0; width: 100%;" value="<?php echo isset($_POST['appodate']) ? $_POST['appodate'] : ''; ?>">
-                            </div>
-                            <div>
-                                <input type="submit" name="filter" value="Filter" class="btn-primary-soft btn button-icon btn-filter">
-                            </div>
-                            <?php if (isset($_POST['filter'])): ?>
-                                <div>
-                                    <a href="appointment.php" class="btn-secondary" style="padding: 10px 15px; display: inline-block;">Clear</a>
-                                </div>
-                            <?php endif; ?>
-                        </form>
+                            <a href="?sort=oldest<?php echo $searchParam; ?>"
+                                class="filter-btn oldest-btn <?php echo $currentSort === 'oldest' ? 'active' : 'inactive'; ?>">
+                                Z-A
+                            </a>
+                        </div>
                     </div>
 
                     <?php
@@ -343,8 +348,34 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
                         }
                     }
 
-                    $sqlmain .= " ORDER BY appointment.appodate, appointment.appointment_time";
+                    // Add sorting
+                    $sqlmain .= " ORDER BY ";
+                    if ($sort_param === 'oldest') {
+                        $sqlmain .= "appointment.appodate DESC, appointment.appointment_time DESC";
+                    } else {
+                        $sqlmain .= "appointment.appodate ASC, appointment.appointment_time ASC";
+                    }
+
+                    // Add pagination
+                    $sqlmain .= " LIMIT $start_from, $results_per_page";
+
                     $result = $database->query($sqlmain);
+
+                    // Count query for pagination
+                    $count_query = "SELECT COUNT(*) as total 
+               FROM appointment 
+               INNER JOIN patient ON appointment.pid = patient.pid 
+               INNER JOIN doctor ON appointment.docid = doctor.docid 
+               INNER JOIN procedures ON appointment.procedure_id = procedures.procedure_id 
+               WHERE appointment.status = 'appointment'";
+
+                    if (isset($_GET['search'])) {
+                        $count_query .= " AND (patient.pname LIKE '%$search%' OR doctor.docname LIKE '%$search%' OR procedures.procedure_name LIKE '%$search%')";
+                    }
+
+                    $count_result = $database->query($count_query);
+                    $count_row = $count_result->fetch_assoc();
+                    $total_pages = ceil($count_row['total'] / $results_per_page);
                     ?>
 
                     <?php if ($result->num_rows > 0): ?>
@@ -388,13 +419,39 @@ $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='
                                             </td>
                                             <td>
                                                 <div class="action-buttons">
-                                                    <a href="#" onclick="showCancelModal(<?php echo $row['appoid']; ?>, '<?php echo $row['pname']; ?>')" class="action-btn cancel-btn">Cancel</a>
+                                                    <a href="#" onclick="showCancelModal(<?php echo $row['appoid']; ?>, '<?php echo $row['pname']; ?>')" class="action-btn remove-btn">Cancel</a>
                                                 </div>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
                                 </tbody>
                             </table>
+                        </div>
+                                                <!-- Pagination -->
+                                                <div class="pagination">
+                            <?php
+                            $currentSort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
+                            $sortParam = '&sort=' . $currentSort;
+                            $searchParam = isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '';
+
+                            // Previous link
+                            if ($page > 1) {
+                                echo '<a href="?page=' . ($page - 1) . $searchParam . $sortParam . '">&laquo; Previous</a>';
+                            }
+
+                            // Page links
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+
+                            for ($i = $start_page; $i <= $end_page; $i++) {
+                                echo '<a href="?page=' . $i . $searchParam . $sortParam . '"' . ($i == $page ? ' class="active"' : '') . '>' . $i . '</a>';
+                            }
+
+                            // Next link
+                            if ($page < $total_pages) {
+                                echo '<a href="?page=' . ($page + 1) . $searchParam . $sortParam . '">Next &raquo;</a>';
+                            }
+                            ?>
                         </div>
                     <?php else: ?>
                         <div class="no-results">

@@ -79,6 +79,7 @@ class MYPDF extends TCPDF {
         // Footer info
         $this->Cell(0, 10, 'Document Security ID: ' . $GLOBALS['document_id'] . ' | Generated on ' . date('d/m/Y H:i:s'), 0, false, 'C');
     }
+
 }
 
 
@@ -135,33 +136,32 @@ $refNumber = 'SMR-' . $userid . '-' . date('YmdHis');
 $currentDate = date('d F Y');
 
 
-// Begin with custom header
-$pdf->SetFont('helvetica', 'B', 14);
-$pdf->Cell(0, 10, 'OFFICIAL MEDICAL RECORD', 0, 1, 'C');
-
-
-// Add logo
+// Add logo first (larger size, centered)
 $image_file = '../Media/Icon/SDMC Logo.jpg';
 if (file_exists($image_file)) {
-    $pdf->Image($image_file, 95, 25, 20, '', 'JPG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+    $pdf->Image($image_file, 85, 10, 40, '', 'JPG', '', 'T', false, 300, '', false, false, 0, false, false, false);
 }
 
+// Move cursor down after the image
+$pdf->SetY(42); // Adjust depending on image size
 
-$pdf->Ln(20); // Space after logo
+// Begin with custom header
+$pdf->SetFont('helvetica', 'B', 14);
+$pdf->Cell(0, 10, 'MEDICAL RECORD', 0, 1, 'C');
 
-
+/*
 // Add reference info in a table
 $pdf->SetFont('helvetica', '', 8);
 $pdf->Cell(100, 5, 'REFERENCE NUMBER: ' . $refNumber, 0, 0);
 $pdf->Cell(80, 5, 'DATE ISSUED: ' . date('d M Y'), 0, 1, 'R');
-
+*/
 
 // Add clinic name and address
 $pdf->SetFont('helvetica', 'B', 10);
 $pdf->Cell(0, 7, 'SONGCO DENTAL AND MEDICAL CLINIC', 0, 1, 'C');
 $pdf->SetFont('helvetica', '', 8);
-$pdf->Cell(0, 5, '123 Health Avenue, Singapore 123456', 0, 1, 'C');
-$pdf->Cell(0, 5, 'Tel: +65 6123 4567 | Email: info@songcodental.com.sg', 0, 1, 'C');
+$pdf->Cell(0, 5, '1134 Centro St., Brgy Calulut, City of San Fernando, Pampanga', 0, 1, 'C');
+$pdf->Cell(0, 5, 'Tel: +63 966 904 7561 | Email: sdmclinic.csfp@gmail.com', 0, 1, 'C');
 
 
 $pdf->Ln(5);
@@ -187,35 +187,35 @@ $pdf->SetFillColor(230, 230, 230); // Light gray
 
 // Table headers
 $pdf->Cell(40, 6, 'Patient ID', 1, 0, 'L', 1);
-$pdf->Cell(145, 6, 'Patient Name', 1, 1, 'L', 1);
+$pdf->Cell(140, 6, 'Patient Name', 1, 1, 'L', 1);
 
 
 // Table data
 $pdf->SetFont('helvetica', '', 8);
 $pdf->Cell(40, 6, $userid, 1, 0, 'L');
-$pdf->Cell(145, 6, $username, 1, 1, 'L');
+$pdf->Cell(140, 6, $username, 1, 1, 'L');
 
 
 // Date of Birth row
 $pdf->SetFont('helvetica', 'B', 8);
 $pdf->Cell(40, 6, 'Date of Birth', 1, 0, 'L', 1);
-$pdf->Cell(145, 6, 'Age / Gender', 1, 1, 'L', 1);
+$pdf->Cell(140, 6, 'Age / Gender', 1, 1, 'L', 1);
 
 
 $pdf->SetFont('helvetica', '', 8);
 $pdf->Cell(40, 6, $patientDOB, 1, 0, 'L');
-$pdf->Cell(145, 6, ($age !== '' ? $age . ' years' : 'Not specified') . ' / ' . (isset($userfetch['pgender']) ? $userfetch['pgender'] : 'Not specified'), 1, 1, 'L');
+$pdf->Cell(140, 6, ($age !== '' ? $age . ' years' : 'Not specified') . ' / ' . (isset($userfetch['pgender']) ? $userfetch['pgender'] : 'Not specified'), 1, 1, 'L');
 
 
 // Contact Info row
 $pdf->SetFont('helvetica', 'B', 8);
 $pdf->Cell(40, 6, 'Contact Number', 1, 0, 'L', 1);
-$pdf->Cell(145, 6, 'Email Address', 1, 1, 'L', 1);
+$pdf->Cell(140, 6, 'Email Address', 1, 1, 'L', 1);
 
 
 $pdf->SetFont('helvetica', '', 8);
 $pdf->Cell(40, 6, $userfetch['ptel'], 1, 0, 'L');
-$pdf->Cell(145, 6, $useremail, 1, 1, 'L');
+$pdf->Cell(140, 6, $useremail, 1, 1, 'L');
 
 
 // Address row
@@ -245,7 +245,7 @@ $pdf->SetFillColor(230, 230, 230); // Light gray
 
 // Table headers
 $pdf->Cell(75, 6, 'Health Parameter', 1, 0, 'L', 1);
-$pdf->Cell(110, 6, 'Status / Details', 1, 1, 'L', 1);
+$pdf->Cell(105, 6, 'Status / Details', 1, 1, 'L', 1);
 
 
 // Table data rows
@@ -264,7 +264,7 @@ $healthParameters = [
 
 foreach ($healthParameters as $param => $value) {
     $pdf->Cell(75, 6, $param, 1, 0, 'L');
-    $pdf->Cell(110, 6, $value, 1, 1, 'L');
+    $pdf->Cell(105, 6, $value, 1, 1, 'L');
 }
 
 
@@ -286,7 +286,7 @@ $pdf->SetFillColor(230, 230, 230); // Light gray
 
 // Table headers
 $pdf->Cell(75, 6, 'Parameter', 1, 0, 'L', 1);
-$pdf->Cell(110, 6, 'Status / Details', 1, 1, 'L', 1);
+$pdf->Cell(105, 6, 'Status / Details', 1, 1, 'L', 1);
 
 
 // Table data rows
@@ -305,7 +305,7 @@ $riskFactors = [
 
 foreach ($riskFactors as $param => $value) {
     $pdf->Cell(75, 6, $param, 1, 0, 'L');
-    $pdf->Cell(110, 6, $value, 1, 1, 'L');
+    $pdf->Cell(105, 6, $value, 1, 1, 'L');
 }
 
 
@@ -331,43 +331,40 @@ $pdf->MultiCell(0, 5, 'I hereby certify that the information contained in this m
 $pdf->Ln(10);
 
 
-// Signature lines
-$pdf->Cell(60, 0, '', 'B', 0);
-$pdf->Cell(5, 0, '', 0, 0);
-$pdf->Cell(60, 0, '', 'B', 0);
-$pdf->Cell(5, 0, '', 0, 0);
-$pdf->Cell(60, 0, '', 'B', 1);
+// Signature lines - MODIFIED: Removed Medical Director, now only Patient and Dentist centered
+$pdf->Cell(10, 0, '', 0, 0);       // Reduced left spacing to compensate for wider lines
+$pdf->Cell(75, 0, '', 'B', 0);     // Wider Patient signature line
+$pdf->Cell(10, 0, '', 0, 0);       // Adjusted space between
+$pdf->Cell(75, 0, '', 'B', 1);     // Wider Dentist signature line
 
 
 $pdf->Ln(2);
 
 
-// Signature labels
+// Signature labels - MODIFIED: Only two labels now centered
 $pdf->SetFont('helvetica', 'B', 8);
+$pdf->Cell(17, 5, '', 0, 0); // Left spacing to center the two signatures
 $pdf->Cell(60, 5, 'Patient Signature', 0, 0, 'C');
-$pdf->Cell(5, 5, '', 0, 0);
-$pdf->Cell(60, 5, 'Attending Dentist', 0, 0, 'C');
-$pdf->Cell(5, 5, '', 0, 0);
-$pdf->Cell(60, 5, 'Medical Director', 0, 1, 'C');
+$pdf->Cell(25, 5, '', 0, 0); // Space between labels
+$pdf->Cell(60, 5, 'Dentist Signature', 0, 1, 'C');
 
 
-// Signature details
+// Signature details - MODIFIED: Only two details now centered
 $pdf->SetFont('helvetica', '', 8);
+$pdf->Cell(17, 5, '', 0, 0); // Left spacing to center the two signatures
 $pdf->Cell(60, 5, $username, 0, 0, 'C');
-$pdf->Cell(5, 5, '', 0, 0);
-$pdf->Cell(60, 5, 'Songco Dental and Medical Clinic', 0, 0, 'C');
-$pdf->Cell(5, 5, '', 0, 0);
-$pdf->Cell(60, 5, 'License No. XXXXX', 0, 1, 'C');
+$pdf->Cell(25, 5, '', 0, 0); // Space between details
+$pdf->Cell(60, 5, 'SONGCO DENTAL AND MEDICAL CLINIC', 0, 1, 'C');
 
 
 $pdf->Ln(10);
 
-
+/*
 // Official note in a box
 $pdf->SetFont('helvetica', 'I', 8);
 $pdf->Cell(0, 10, 'This document is an official medical record and is valid only with clinic seal and authorized signatures.', 1, 1, 'C');
 $pdf->Cell(0, 5, 'Any alterations to this document will render it invalid.', 1, 1, 'C');
-
+*/
 
 // Add official stamp image if available
 $stamp_file = '../Media/Icon/official_stamp.png';
@@ -380,4 +377,3 @@ if (file_exists($stamp_file)) {
 $pdf->Output('Official_Medical_Record_' . $userid . '_' . date('Ymd') . '.pdf', 'D');
 exit;
 ?>
-

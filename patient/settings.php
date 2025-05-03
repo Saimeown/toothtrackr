@@ -145,6 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/admin.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/settings.css">
     <title>Settings - ToothTrackr</title>
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <style>
@@ -167,68 +168,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_medical_history
             object-fit: cover;
             margin: 0 auto 20px;
             display: block;
-        }
-        
-        /* Settings Cards */
-        .settings-card {
-            background-color: #f2f7fb;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
-        }
-        
-        .settings-card:hover {
-            background-color: #e1eaf4;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .settings-icon {
-            width: 40px;
-            height: 40px;
-            margin-right: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #e1eaf4;
-            border-radius: 50%;
-        }
-        
-        .settings-icon img {
-            width: 20px;
-            height: 20px;
-        }
-        
-        .settings-info {
-            flex: 1;
-        }
-        
-        .settings-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0;
-            color: #333;
-        }
-        
-        .settings-description {
-            font-size: 13px;
-            color: #666;
-            margin: 3px 0 0;
-        }
-        
-        .settings-arrow {
-            color: #aaa;
-            font-size: 20px;
-        }
-        
-        .danger-text {
-            color: #e74c3c;
         }
         
         /* Popup styles */
