@@ -223,7 +223,7 @@ if (isset($_GET['status'])) {
             align-items: center;
             z-index: 999;
         }
-        
+
         .close {
             position: absolute;
             top: 15px;
@@ -623,12 +623,10 @@ if (isset($_GET['status'])) {
     </div>
 
     <script>
-        // Function to clear search and redirect
         function clearSearch() {
             window.location.href = 'patient.php';
         }
 
-        // Search input event listener
         document.addEventListener('DOMContentLoaded', function () {
             const searchInput = document.getElementById('searchInput');
             const clearBtn = document.querySelector('.clear-btn');
@@ -654,7 +652,6 @@ if (isset($_GET['status'])) {
                 }
             }
 
-            // Close button functionality
             const closeButtons = document.querySelectorAll('.close');
             closeButtons.forEach(button => {
                 button.addEventListener('click', function (e) {
@@ -663,7 +660,7 @@ if (isset($_GET['status'])) {
                     if (overlay) {
                         overlay.style.display = 'none';
                         document.body.style.overflow = '';
-                        // Remove the parameters from URL and reload
+
                         const url = new URL(window.location);
                         url.searchParams.delete('action');
                         url.searchParams.delete('id');
@@ -674,7 +671,6 @@ if (isset($_GET['status'])) {
                 });
             });
 
-            // Close popup when clicking outside of it
             const overlays = document.querySelectorAll('.overlay');
             overlays.forEach(overlay => {
                 overlay.addEventListener('click', function (e) {
