@@ -31,7 +31,6 @@ if (isset($_GET['page'])) {
     $page = 1;
 }
 
-// Calculate the starting limit for SQL
 $start_from = ($page - 1) * $results_per_page;
 
 // Search functionality
@@ -282,7 +281,6 @@ if (isset($_GET['cancel_success'])) {
                     </div>
 
                     <?php
-                    // Build the base query
                     $sqlmain = "SELECT 
                         appointment.appoid, 
                         appointment.pid, 
