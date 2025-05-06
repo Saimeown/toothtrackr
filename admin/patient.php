@@ -211,8 +211,6 @@ if (isset($_GET['status'])) {
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
 
     <style>
-        
-        
         .overlay {
             position: fixed;
             top: 0;
@@ -225,9 +223,7 @@ if (isset($_GET['status'])) {
             align-items: center;
             z-index: 999;
         }
-
         
-
         .close {
             position: absolute;
             top: 15px;
