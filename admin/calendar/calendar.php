@@ -2,20 +2,16 @@
 date_default_timezone_set('Asia/Singapore');
 session_start();
 
-
 require '../../vendor/autoload.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-
 
 if (!isset($_SESSION["user"]) || ($_SESSION["user"] == "" || $_SESSION['usertype'] != 'a')) {
     header("location: ../login.php");
     exit();
 }
 
-
 include("../../connection.php");
-
 
 $procedures = $database->query("SELECT * FROM procedures");
 $procedure_options = '';
@@ -23,27 +19,23 @@ while ($procedure = $procedures->fetch_assoc()) {
     $procedure_options .= '<option value="' . $procedure['procedure_id'] . '">' . $procedure['procedure_name'] . '</option>';
 }
 
-
 $doctors = $database->query("SELECT docid, docname FROM doctor where status = 'active'");
 $doctor_options = '';
 while ($doctor = $doctors->fetch_assoc()) {
     $doctor_options .= '<option value="' . $doctor['docid'] . '">' . $doctor['docname'] . '</option>';
 }
 
-
-$patients = $database->query("SELECT pid, pname FROM patient");
+$patients = $database->query("SELECT pid, pname FROM patient where status = 'active'");
 $patient_name = '';
 while ($patient = $patients->fetch_assoc()) {
     $patient_name .= '<option value="' . $patient['pid'] . '">' . $patient['pname'] . '</option>';
 }
-
 
 // Get totals for right sidebar
 $doctorrow = $database->query("select * from doctor where status='active';");
 $patientrow = $database->query("select * from patient where status='active';");
 $appointmentrow = $database->query("select * from appointment where status='booking';");
 $schedulerow = $database->query("select * from appointment where status='appointment';");
-
 
 // Calendar variables
 $today = date('Y-m-d');
@@ -54,10 +46,8 @@ $firstDayOfMonth = date('N', strtotime("$currentYear-" . date('m') . "-01"));
 $currentDay = date('j');
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
-
 
 <head>
     <meta charset="UTF-8">
@@ -74,14 +64,16 @@ $currentDay = date('j');
     <!-- bootstrap css and js -->
     <link rel="stylesheet" href="../../css/bootstrap.min.css">
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
-
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <link rel="stylesheet" href="../../css/calendar.css">
     <link rel="stylesheet" href="../../css/animations.css">
     <link rel="stylesheet" href="../../css/main.css">
     <link rel="stylesheet" href="../../css/admin.css">
     <link rel="stylesheet" href="../../css/dashboard.css">
-
 
     <title>Calendar - ToothTrackr</title>
     <link rel="icon" href="../../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
@@ -93,11 +85,9 @@ $currentDay = date('j');
             margin-bottom: 15px;
         }
 
-
         .stat-box {
             height: 100%;
         }
-
 
         .right-sidebar {
             width: 400px;
@@ -114,28 +104,54 @@ $currentDay = date('j');
             margin: 20px 0;
         }
 
-
         .select-dentist-message p {
             font-size: 18px;
             color: #666;
             text-align: center;
             padding: 20px;
         }
+        
+        /* Select2 dropdown styling */
+        .select2-container--default .select2-selection--single {
+            height: 38px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+        
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+        }
+        
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+        
+        .select2-container .select2-selection--single {
+            box-sizing: border-box;
+            cursor: pointer;
+            display: block;
+            height: 38px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .select2-container--default .select2-search--dropdown .select2-search__field {
+            border: 1px solid #ced4da;
+        }
+        
+        .select2-dropdown {
+            border: 1px solid #ced4da;
+        }
     </style>
 </head>
 
-
 <body>
-
-
-
 
     <div class="nav-container">
         <div class="sidebar">
             <div class="sidebar-logo">
                 <img src="../../Media/Icon/ToothTrackr/ToothTrackr.png" alt="ToothTrackr Logo">
             </div>
-
 
             <div class="user-profile">
                 <div class="profile-image">
@@ -146,7 +162,6 @@ $currentDay = date('j');
                     Administrator
                 </p>
             </div>
-
 
             <div class="nav-menu">
                 <a href="../dashboard.php" class="nav-item">
@@ -187,7 +202,6 @@ $currentDay = date('j');
                 </a>
             </div>
 
-
             <div class="log-out">
                 <a href="../logout.php" class="nav-item">
                     <img src="../../Media/Icon/Blue/logout.png" alt="Log Out" class="nav-icon">
@@ -195,7 +209,6 @@ $currentDay = date('j');
                 </a>
             </div>
         </div>
-
 
         <div class="content-area">
             <div class="content">
@@ -216,7 +229,6 @@ $currentDay = date('j');
                             </div>
                         </div>
                     </div>
-
 
                     <!-- Event creation modal -->
                     <div class="modal fade" id="event_entry_modal" tabindex="-1" role="dialog"
@@ -245,7 +257,7 @@ $currentDay = date('j');
                                         </div>
                                         <div class="form-group">
                                             <label for="patient_name">Patient Name</label>
-                                            <select class="form-control" id="patient_name" name="patient_name" required>
+                                            <select class="form-control select2-search" id="patient_name" name="patient_name" required>
                                                 <option value="">Select a Patient</option>
                                                 <?php echo $patient_name; ?>
                                             </select>
@@ -285,7 +297,6 @@ $currentDay = date('j');
                         </div>
                     </div>
 
-
                     <!-- Appointment details modal -->
                     <div class="modal fade" id="appointmentModal" tabindex="-1" role="dialog"
                         aria-labelledby="appointmentModalLabel" aria-hidden="true">
@@ -315,7 +326,6 @@ $currentDay = date('j');
                             </div>
                         </div>
                     </div>
-
 
                     <!-- Cancellation confirmation modal -->
                     <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -358,7 +368,6 @@ $currentDay = date('j');
                         </div>
                     </div>
 
-
                     <!-- Non-working day modal -->
                     <div id="nonWorkingDayModal" class="modal fade" tabindex="-1">
                         <div class="modal-dialog">
@@ -398,7 +407,6 @@ $currentDay = date('j');
                                 </div>
                             </a>
 
-
                             <!-- Second row -->
                             <a href="../patient.php" class="stat-box-link">
                                 <div class="stat-box">
@@ -411,7 +419,6 @@ $currentDay = date('j');
                                     </div>
                                 </div>
                             </a>
-
 
                             <a href="../booking.php" class="stat-box-link">
                                 <div class="stat-box">
@@ -427,7 +434,6 @@ $currentDay = date('j');
                                     </div>
                                 </div>
                             </a>
-
 
                             <a href="../appointment.php" class="stat-box-link">
                                 <div class="stat-box">
@@ -445,7 +451,6 @@ $currentDay = date('j');
                             </a>
                         </div>
                     </div>
-
 
                     <div class="calendar-section">
                         <!-- Color Guide -->
@@ -478,7 +483,6 @@ $currentDay = date('j');
                         </div>
                     </div>
 
-
                     <div class="upcoming-appointments">
                         <h3>Upcoming Appointments</h3>
                         <div class="appointments-content">
@@ -501,7 +505,6 @@ $currentDay = date('j');
                                 ORDER BY appointment.appodate ASC
                                 LIMIT 3;
                             ");
-
 
                             if ($upcomingAppointments->num_rows > 0) {
                                 while ($appointment = $upcomingAppointments->fetch_assoc()) {
@@ -529,11 +532,27 @@ $currentDay = date('j');
         </div>
     </div>
 
-
     <script>
         $(document).ready(function () {
             var currentDentistId = null;
 
+            // Initialize Select2 for patient dropdown
+            $('#patient_name').select2({
+                placeholder: "Search for a patient...",
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $('#event_entry_modal')
+            });
+
+            // Reinitialize Select2 when modal is shown to fix styling issues
+            $('#event_entry_modal').on('shown.bs.modal', function () {
+                $('#patient_name').select2({
+                    placeholder: "Search for a patient...",
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#event_entry_modal')
+                });
+            });
 
             // Don't initialize calendar by default
             // Instead, show a message prompting to select a dentist
@@ -552,13 +571,11 @@ $currentDay = date('j');
                 }
             });
 
-
             // Form submission handler
             $('#eventForm').on('submit', function (e) {
                 e.preventDefault();
                 save_event();
             });
-
 
             // Cancel reason dropdown handler
             $('#cancelReason').change(function () {
@@ -571,23 +588,19 @@ $currentDay = date('j');
                 }
             });
 
-
             // Confirm cancellation handler - FIXED
             $('#confirmCancel').click(function () {
                 var formData = $('#cancelForm').serialize();
-
 
                 if (!$('#cancelReason').val()) {
                     alert('Please select a cancellation reason');
                     return;
                 }
 
-
                 if ($('#cancelReason').val() === 'Other' && !$('#otherReason').val()) {
                     alert('Please specify the cancellation reason');
                     return;
                 }
-
 
                 $.ajax({
                     url: 'cancel_appointment.php', // Changed from cancel_appointment.php to save_event.php
@@ -613,23 +626,19 @@ $currentDay = date('j');
                 });
             });
 
-
             // Non-working day handlers
             $("#addNonWorkingDay").click(function () {
                 $("#nonWorkingDayModal").modal("show");
             });
 
-
             $("#saveNonWorkingDay").click(function () {
                 var selectedDate = $("#nonWorkingDate").val();
                 var description = $("#nonWorkingDesc").val();
-
 
                 if (!selectedDate || !description) {
                     alert("Please enter a date and description.");
                     return;
                 }
-
 
                 $.ajax({
                     url: "save_non_working_day.php",
@@ -655,11 +664,9 @@ $currentDay = date('j');
             });
         });
 
-
         function display_events(dentistId) {
             var events = new Array();
             var bookedTimes = [];
-
 
             function fetchBookedTimes(date) {
                 $.ajax({
@@ -678,7 +685,6 @@ $currentDay = date('j');
                 });
             }
 
-
             function updateTimeDropdown() {
                 var timeSlots = [
                     "09:00:00", "09:30:00",
@@ -688,7 +694,6 @@ $currentDay = date('j');
                     "14:00:00", "14:30:00",
                     "16:00:00", "16:30:00"
                 ];
-
 
                 $('#appointment_time').empty();
                 $.each(timeSlots, function (index, time) {
@@ -701,7 +706,6 @@ $currentDay = date('j');
                     $('#appointment_time').append(option);
                 });
             }
-
 
             $.ajax({
                 url: 'display_event.php',
@@ -727,11 +731,9 @@ $currentDay = date('j');
                         });
                     });
 
-
                     if ($('#calendar').fullCalendar) {
                         $('#calendar').fullCalendar('destroy');
                     }
-
 
                     $('#calendar').fullCalendar({
                         defaultView: 'month',
@@ -761,7 +763,6 @@ $currentDay = date('j');
                             var eventDate = moment(event.start).format('YYYY-MM-DD');
                             var todayDate = moment().format('YYYY-MM-DD');
 
-
                             if (eventDate < todayDate) {
                                 element.css({
                                     'background-color': event.color,
@@ -769,11 +770,9 @@ $currentDay = date('j');
                                 });
                             }
 
-
                             element.on('click', function () {
                                 // Set the appointment ID for cancellation
                                 $('#cancelAppoid').val(event.event_id);
-
 
                                 // Fill modal fields with event data
                                 $('#modalProcedureName').text(event.procedure_name || 'N/A');
@@ -781,7 +780,6 @@ $currentDay = date('j');
                                 $('#modalDentistName').text(event.dentist_name || 'N/A');
                                 $('#modalDate').text(moment(event.start).format('MMMM D, YYYY'));
                                 $('#modalTime').text(event.time);
-
 
                                 var statusText = '';
                                 switch (event.status) {
@@ -793,7 +791,6 @@ $currentDay = date('j');
                                     default: statusText = 'N/A';
                                 }
                                 $('#modalStatus').text(statusText);
-
 
                                 // Show/hide buttons based on status
                                 if (event.status === 'booking') {
@@ -807,11 +804,9 @@ $currentDay = date('j');
                                     $('#cancel-appointment').hide();
                                 }
 
-
                                 // Show the modal
                                 $('#appointmentModal').modal('show');
                             });
-
 
                             element.css({
                                 'background-color': event.color,
@@ -831,10 +826,8 @@ $currentDay = date('j');
             });
         }
 
-
         function save_event() {
             var formData = $('#eventForm').serialize();
-
 
             // Validate required fields
             if (!$('#event_name').val() || !$('#procedure').val() || !$('#patient_name').val() ||
@@ -843,11 +836,9 @@ $currentDay = date('j');
                 return false;
             }
 
-
             var submitButton = $('#eventForm').find('.btn-primary');
             submitButton.prop('disabled', true);
             submitButton.text('Submitting...');
-
 
             $.ajax({
                 url: "save_event.php",
@@ -877,7 +868,4 @@ $currentDay = date('j');
         }
     </script>
 </body>
-
-
 </html>
-
