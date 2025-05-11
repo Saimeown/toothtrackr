@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Add these cache control meta tags -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="icon" href="../Media/Icon/ToothTrackr/ToothTrackr-white.png" type="image/png">
     <link rel="stylesheet" href="../css/animations.css">  
     <link rel="stylesheet" href="../css/main.css">  
@@ -12,11 +16,38 @@
     <link rel="stylesheet" href="../css/loading.css">
         
     <title>Log in - ToothTrackr (Admin)</title>
+    
+    <!-- Add the same browser history prevention script -->
+    <script>
+        // Prevent going back to dashboard after logout
+        function preventBackAfterLogout() {
+            window.history.forward();
+        }
+        
+        // Execute when page loads
+        window.onload = function() {
+            preventBackAfterLogout();
+        }
+        
+        // Execute when back/forward buttons are pressed
+        window.onpageshow = function(event) {
+            if (event.persisted) {
+                // Page was loaded from cache (back button)
+                window.location.reload();
+            }
+        };
+    </script>
 </head>
 <body>
     <?php
     // Start the session
     session_start();
+
+    // Add these headers to prevent caching
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Cache-Control: post-check=0, pre-check=0", false);
+    header("Pragma: no-cache");
+    header("Expires: 0");
 
     // Check if user is already logged in as admin
     if (isset($_SESSION["user"]) && $_SESSION['usertype'] == 'a') {
@@ -29,7 +60,7 @@
     $_SESSION["usertype"] = "";
 
     // Set the timezone
-    date_default_timezone_set('Asia/Kolkata');
+    date_default_timezone_set('Asia/Singapore'); // Updated timezone to match dashboard.php
     $date = date('Y-m-d');
     $_SESSION["date"] = $date;
 
