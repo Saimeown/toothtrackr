@@ -1,3 +1,9 @@
+<?php 
+
+session_start();
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -115,13 +121,54 @@
             background-position: left center;
             padding-left: 30px;
         }
+        
+        /* Procedures popup styles */
+        .procedures-popup {
+            padding: 20px;
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        
+        .procedures-popup h2 {
+            margin-top: 0;
+            color: #2a5885;
+        }
+        
+        .procedures-popup .input-text {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .procedures-popup textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        
+        .success-popup {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .success-popup h2 {
+            color: #4CAF50;
+        }
     </style>
 </head>
 
 <body>
     <?php
     date_default_timezone_set('Asia/Singapore');
-    session_start();
+    
 
     if (isset($_SESSION["user"])) {
         if (($_SESSION["user"]) == "" || $_SESSION['usertype'] != 'a') {
@@ -242,8 +289,73 @@
                         </div>
                     </div>
 
+                    <!-- Procedures Section -->
+                    <!-- Procedures Section -->
+<div class="table-container">
+    <div class="announcements-header">
+        <p class="heading-main12" style="margin-left: 15px;font-size:18px;color:rgb(49, 49, 49)">All Procedures (<?php 
+        $sqlcount = "SELECT COUNT(*) FROM procedures";
+        $result = $database->query($sqlcount);
+        $row = $result->fetch_row();
+        echo $row[0]; 
+        ?>)</p>
+        <div class="announcement-filters">
+            <a href="?action=add_procedure&id=none&error=0" class="non-style-link">
+                <button class="filter-btn add-btn"
+                    style="display: flex;justify-content: center;align-items: center;margin-left:75px; width: 200px;">
+                    Add New Procedure
+                </button>
+            </a>
+        </div>
+    </div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Procedure Name</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            if ($_POST) {
+                $keyword = $_POST["search"];
+                $sqlmain = "SELECT * FROM procedures WHERE procedure_name='$keyword' OR procedure_name LIKE '$keyword%' OR procedure_name LIKE '%$keyword' OR procedure_name LIKE '%$keyword%'";
+            } else {
+                $sqlmain = "SELECT * FROM procedures ORDER BY procedure_id ASC";
+            }
+            
+            $result = $database->query($sqlmain);
+            if ($result->num_rows == 0) {
+                echo '<tr><td colspan="4"><center>No procedures found</center></td></tr>';
+            } else {
+                while ($row = $result->fetch_assoc()) {
+                    $id = $row["procedure_id"];
+                    $name = $row["procedure_name"];
+                    $desc = $row["description"];
+                    
+                    echo '<tr>
+                        <td>'.$id.'</td>
+                        <td><div class="cell-text">'.substr($name, 0, 30).'</div></td>
+                        <td><div class="cell-text">'.substr($desc, 0, 50).'...</div></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="?action=edit_procedure&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
+                                <a href="?action=drop_procedure&id='.$id.'&name='.$name.'" class="action-btn remove-btn">Remove</a>
+                            </div>
+                        </td>
+                    </tr>';
+                }
+            }
+            ?>
+        </tbody>
+    </table>
+</div>
+
                     <!-- Services Section -->
-                    <div class="table-container">
+                    <div class="table-container" style="margin-top: 30px;">
                         <p class="heading-main12" style="margin-left: 15px;font-size:18px;color:rgb(49, 49, 49)">All Services (<?php 
                         $sqlcount = "SELECT COUNT(*) FROM services";
                         $result = $database->query($sqlcount);
@@ -774,6 +886,144 @@
             </div>
             </div>
             ';
+        } elseif ($action == 'add_procedure') {
+            $error_1 = $_GET["error"];
+            $errorlist = array(
+                '1' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;">Procedure with this name already exists.</label>',
+                '2' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;">Please fill all fields.</label>',
+                '3' => "",
+                '0' => '',
+            );
+
+            if ($error_1 != '3') {
+                echo '
+                <div id="popup1" class="overlay">
+                        <div class="popup procedures-popup">
+                        <center>
+                            <h2>Add New Procedure</h2>
+                            <a class="close" href="settings.php">&times;</a>
+                            <div class="content" style="height: 400px; width: 300px;">
+                                ' . $errorlist[$error_1] . '
+                                <form action="add-procedure.php" method="POST">
+                                    <div class="form-group">
+                                        <label for="name">Procedure Name:</label>
+                                        <input type="text" name="name" class="input-text" placeholder="Procedure Name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description:</label>
+                                        <textarea name="description" class="input-text" placeholder="Procedure Description" rows="4" required></textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn">
+                                        <input type="submit" value="Add Procedure" class="login-btn btn-primary btn">
+                                    </div>
+                                </form>
+                            </div>
+                        </center>
+                </div>
+                </div>
+                ';
+            } else {
+                echo '
+                <div id="popup1" class="overlay">
+                        <div class="popup success-popup">
+                        <center>
+                        <br><br><br><br>
+                            <h2>Procedure Added Successfully!</h2>
+                            <a class="close" href="settings.php">&times;</a>
+                            <div class="content" style="height: 0px; width: 300px;">
+                            </div>
+                            <div style="display: flex;justify-content: center;">
+                            <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;OK&nbsp;&nbsp;</font></button></a>
+                            </div>
+                            <br><br>
+                        </center>
+                </div>
+                </div>
+                ';
+            }
+        } elseif ($action == 'edit_procedure') {
+            $sqlmain = "SELECT * FROM procedures WHERE procedure_id='$id'";
+            $result = $database->query($sqlmain);
+            $row = $result->fetch_assoc();
+            $name = $row["procedure_name"];
+            $desc = $row["description"];
+
+            $error_1 = $_GET["error"];
+            $errorlist = array(
+                '1' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;">Procedure with this name already exists.</label>',
+                '2' => '<label for="promter" class="form-label" style="color:rgb(255, 62, 62);text-align:center;">Please fill all fields.</label>',
+                '3' => "",
+                '0' => '',
+            );
+
+            if ($error_1 != '3') {
+                echo '
+                <div id="popup1" class="overlay">
+                        <div class="popup procedures-popup">
+                        <center>
+                            <h2>Edit Procedure</h2>
+                            <a class="close" href="settings.php">&times;</a>
+                            <div class="content" style="height: 400px; width: 300px;">
+                                ' . $errorlist[$error_1] . '
+                                <form action="edit-procedure.php" method="POST">
+                                    <input type="hidden" name="id" value="' . $id . '">
+                                    <div class="form-group">
+                                        <label for="name">Procedure Name:</label>
+                                        <input type="text" name="name" class="input-text" placeholder="Procedure Name" value="' . $name . '" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description:</label>
+                                        <textarea name="description" class="input-text" placeholder="Procedure Description" rows="4" required>' . $desc . '</textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn">
+                                        <input type="submit" value="Save Changes" class="login-btn btn-primary btn">
+                                    </div>
+                                </form>
+                            </div>
+                        </center>
+                </div>
+                </div>
+                ';
+            } else {
+                echo '
+                <div id="popup1" class="overlay">
+                        <div class="popup success-popup">
+                        <center>
+                        <br><br><br><br>
+                            <h2>Changes Saved Successfully!</h2>
+                            <a class="close" href="settings.php">&times;</a>
+                            <div class="content" style="height: 0px; width: 300px;">
+                            </div>
+                            <div style="display: flex;justify-content: center;">
+                            <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;OK&nbsp;&nbsp;</font></button></a>
+                            </div>
+                            <br><br>
+                        </center>
+                </div>
+                </div>
+                ';
+            }
+        } elseif ($action == 'drop_procedure') {
+            $nameget = $_GET["name"];
+            echo '
+            <div id="popup1" class="overlay">
+                    <div class="popup">
+                    <center>
+                        <h2>Are you sure?</h2>
+                        <a class="close" href="settings.php">&times;</a>
+                        <div class="content" style="height: 0px;">
+                            You want to delete this procedure<br>(' . substr($nameget, 0, 40) . ').
+                        </div>
+                        <div style="display: flex;justify-content: center;">
+                        <a href="delete-procedure.php?id=' . $id . '" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"<font class="tn-in-text">&nbsp;Yes&nbsp;</font></button></a>&nbsp;&nbsp;&nbsp;
+                        <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;No&nbsp;&nbsp;</font></button></a>
+                        </div>
+                    </center>
+            </div>
+            </div>
+            ';
         }
     }
     ?>
@@ -802,7 +1052,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const action = urlParams.get('action');
 
-            if (action === 'view' || action === 'edit' || action === 'drop' || action === 'add' || action === 'edit_clinic') {
+            if (action === 'view' || action === 'edit' || action === 'drop' || action === 'add' || action === 'edit_clinic' || action === 'edit_procedure' || action === 'drop_procedure' || action === 'add_procedure') {
                 const popup = document.getElementById('popup1');
                 if (popup) {
                     popup.style.display = 'flex';
