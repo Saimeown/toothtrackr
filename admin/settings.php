@@ -830,7 +830,7 @@ session_start();
                         <br><br><br><br>
                             <h2>Changes Saved Successfully!</h2>
                             <a class="close" href="settings.php">&times;</a>
-                            <div class="content">
+                            <div class="content" style="height: 0px;">
                             </div>
                             <div style="display: flex;justify-content: center;">
                             <a href="settings.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;OK&nbsp;&nbsp;</font></button></a>
