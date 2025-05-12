@@ -479,6 +479,8 @@ $currentDay = date('j');
                                     <div class="color-circle" style="background-color: #BBBBBB;"></div>
                                     <div class="color-label">Completed</div>
                                 </div>
+                                <button class="legend-item" id="addNonWorkingDay" style="background-color:rgb(80, 87, 185); width: 200px; border: none;">Add No Service Day</button>
+
                             </div>
                         </div>
                     </div>
