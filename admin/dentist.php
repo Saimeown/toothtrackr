@@ -501,15 +501,16 @@
             $nameget = $_GET["name"];
             echo '
             <div id="popup1" class="overlay">
-                    <div class="popup" style="max-height: 200px;">
+                    <div class="popup" style="max-height: 250px;">
                     <center>
                         <h2>Are you sure?</h2>
                         <a class="close" href="dentist.php">&times;</a>
-                        <div class="content">
+                        <div class="content" style="display: flex; flex-direction: column; height: 130px;">
                             You want to delete this record<br>(' . substr($nameget, 0, 40) . ').
-                           
+                           <div style="display:flex; justify-content: center; margin-top: 20px;">
                             <a href="delete-dentist.php?id=' . $id . '" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"<font class="tn-in-text">&nbsp;Yes&nbsp;</font></button></a>&nbsp;&nbsp;&nbsp;
                         <a href="dentist.php" class="non-style-link"><button  class="btn-primary btn"  style="display: flex;justify-content: center;align-items: center;margin:10px;padding:10px;"><font class="tn-in-text">&nbsp;&nbsp;No&nbsp;&nbsp;</font></button></a>
+                        </div>
                         </div>
                     </center>
             </div>
@@ -661,7 +662,7 @@
                    
                                 <tr>
                                     <td colspan="2">
-                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                    
                                         <input type="submit" value="Add" class="login-btn btn-primary btn">
                                     </td>
@@ -686,7 +687,7 @@
                             <br><br><br><br>
                                 <h2>New Record Added Successfully!</h2>
                                 <a class="close" href="dentist.php">&times;</a>
-                                <div class="content">
+                                <div class="content" style="height: 0px;">
                                    
                                    
                                 </div>
@@ -810,10 +811,9 @@
                                    
                        
                                     <tr>
-                                        <td colspan="2">
-                                            <input type="reset" value="Reset" class="login-btn btn-primary-soft btn" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                       
-                                            <input type="submit" value="Save" class="login-btn btn-primary btn">
+                                        <td colspan="2" style="display: flex; justify-content: center;">
+                                            <input type="reset" value="Reset" class="new-action-btn edit-btn">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                            <input type="submit" value="Save" class="new-action-btn edit-btn">
                                         </td>
                        
                                     </tr>
@@ -836,7 +836,7 @@
                         <br><br><br><br>
                             <h2>Edit Successfully!</h2>
                             <a class="close" href="dentist.php">&times;</a>
-                            <div class="content">
+                            <div class="content" style="height: 0px;">
                                
                                
                             </div>

@@ -81,7 +81,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
         // Render the popup
         echo '
         <div id="popup1" class="overlay">
-            <div class="popup1">
+            <div class="popup1"">
                 <center>
                     <a class="close" href="patient.php">&times;</a>
                     <div style="display: flex;justify-content: center;">
