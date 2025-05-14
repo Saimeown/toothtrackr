@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Only allow patients to log in
         if ($utype == 'p') {
             // Check patient credentials
-            $checker = $database->query("SELECT * FROM patient WHERE pemail='$email'");
+            $checker = $database->query("SELECT * FROM patient WHERE pemail='$email' AND status='active'");
             if ($checker->num_rows == 1) {
                 $patient = $checker->fetch_assoc();
 

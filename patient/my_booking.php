@@ -617,65 +617,78 @@ if (isset($_GET['status'])) {
             });
         });
 
-        function markAsRead(notificationId, element) {
-            fetch('mark_notification_read.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'id=' + notificationId
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    element.classList.remove('unread');
-                    // Update badge count
-                    const badge = document.querySelector('.notification-badge');
-                    if (badge) {
-                        const currentCount = parseInt(badge.textContent);
-                        if (currentCount > 1) {
-                            badge.textContent = currentCount - 1;
-                        } else {
-                            badge.remove();
-                        }
-                    }
-                    // Update the stat number
-                    const statNumber = document.querySelector('#notificationContainer .stat-number');
-                    if (statNumber) {
-                        const currentCount = parseInt(statNumber.textContent);
-                        statNumber.textContent = currentCount - 1;
-                    }
-                }
-            });
+        // Update this function to prevent negative counts
+function updateNotificationCount(newCount) {
+    // Ensure count never goes below 0
+    newCount = Math.max(0, newCount);
+    
+    // Update the stat number
+    const statNumber = document.querySelector('#notificationContainer .stat-number');
+    if (statNumber) {
+        statNumber.textContent = newCount;
+    }
+    
+    // Update or remove the badge
+    const badge = document.querySelector('.notification-badge');
+    if (newCount > 0) {
+        if (badge) {
+            badge.textContent = newCount;
+        } else {
+            // Create new badge if it doesn't exist
+            const notificationIcon = document.querySelector('#notificationContainer .stat-icon');
+            const newBadge = document.createElement('span');
+            newBadge.className = 'notification-badge';
+            newBadge.textContent = newCount;
+            notificationIcon.appendChild(newBadge);
         }
-        
-        function markAllAsRead() {
-            fetch('mark_all_notifications_read.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Remove unread class from all notifications
-                    document.querySelectorAll('.notification-item.unread').forEach(item => {
-                        item.classList.remove('unread');
-                    });
-                    // Remove badge
-                    const badge = document.querySelector('.notification-badge');
-                    if (badge) {
-                        badge.remove();
-                    }
-                    // Update the stat number
-                    const statNumber = document.querySelector('#notificationContainer .stat-number');
-                    if (statNumber) {
-                        statNumber.textContent = '0';
-                    }
-                }
-            });
+    } else {
+        if (badge) {
+            badge.remove();
         }
+    }
+}
+
+// Update markAsRead to use server-side count
+function markAsRead(notificationId, element) {
+    fetch('mark_notification_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'id=' + notificationId
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            element.classList.remove('unread');
+            
+            // Use the count returned from server instead of DOM counting
+            updateNotificationCount(data.unread_count || 0);
+        }
+    });
+}
+
+// Update markAllAsRead to use server-side count
+function markAllAsRead() {
+    fetch('mark_all_notifications_read.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove unread class from all notifications
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+                item.classList.remove('unread');
+            });
+            
+            // Use the count returned from server
+            updateNotificationCount(data.unread_count || 0);
+        }
+    });
+}
     </script>
 </body>
 
