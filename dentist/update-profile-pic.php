@@ -1,91 +1,89 @@
 <?php
 session_start();
 
-// Check if user is logged in and has correct user type
 if (!isset($_SESSION["user"]) || $_SESSION['usertype'] != 'd') {
     header("location: login.php");
     exit();
 }
 
-// Include database connection
 include("../connection.php");
 
-// Get user details
 $useremail = $_SESSION["user"];
 $userrow = $database->query("SELECT * FROM doctor WHERE docemail='$useremail'");
-if ($userrow->num_rows == 0) {
-    $_SESSION["profile_pic_error"] = "User not found.";
-    header("Location: settings.php");
-    exit();
-}
 $userfetch = $userrow->fetch_assoc();
 $userid = $userfetch["docid"];
-$current_photo = $userfetch["photo"];
 
+// Check if form was submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST["upload_photo"])) {
-        // Handle file upload
-        if (isset($_FILES["profile_picture"]) && $_FILES["profile_picture"]["error"] == 0) {
-            $allowed = ["jpg", "jpeg", "png", "gif"];
-            $filename = $_FILES["profile_picture"]["name"];
-            $filetype = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-            $filesize = $_FILES["profile_picture"]["size"];
-
-            // Validate file
-            if (!in_array($filetype, $allowed)) {
-                $_SESSION["profile_pic_error"] = "Only JPG, JPEG, PNG, and GIF files are allowed.";
-            } elseif ($filesize > 5 * 1024 * 1024) { // 5MB limit
-                $_SESSION["profile_pic_error"] = "File size must be less than 5MB.";
-            } else {
-                // Generate unique filename
-                $new_filename = "profile_" . $userid . "_" . time() . "." . $filetype;
-                $upload_path = "../admin/uploads/" . $new_filename;
-
-                // Delete existing photo if it exists
-                if (!empty($current_photo) && file_exists("../admin/uploads/" . $current_photo)) {
-                    unlink("../admin/uploads/" . $current_photo);
-                }
-
-                // Move uploaded file
-                if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $upload_path)) {
-                    // Update database
-                    $update_query = "UPDATE doctor SET photo=? WHERE docid=?";
-                    $stmt = $database->prepare($update_query);
-                    $stmt->bind_param("si", $new_filename, $userid);
-                    $stmt->execute();
-                    $stmt->close();
-
-                    $_SESSION["profile_pic_success"] = "Profile picture updated successfully!";
-                } else {
-                    $_SESSION["profile_pic_error"] = "Failed to upload the file.";
-                }
-            }
-        } else {
-            $_SESSION["profile_pic_error"] = "No file was uploaded or an error occurred.";
-        }
-    } elseif (isset($_POST["delete_photo"])) {
-        // Handle photo deletion
-        if (!empty($current_photo) && file_exists("../admin/uploads/" . $current_photo)) {
-            unlink("../admin/uploads/" . $current_photo);
-            // Update database to remove photo
-            $update_query = "UPDATE doctor SET photo=NULL WHERE docid=?";
-            $stmt = $database->prepare($update_query);
-            $stmt->bind_param("i", $userid);
-            $stmt->execute();
-            $stmt->close();
+    if (isset($_POST["delete_photo"])) {
+        // Handle photo deletion - set to default dentist.png
+        $default_photo = "dentist.png"; // This should be in your uploads folder
+        
+        // Update database
+        $update_sql = "UPDATE doctor SET photo='$default_photo' WHERE docid='$userid'";
+        if ($database->query($update_sql)) {
             $_SESSION["profile_pic_success"] = "Profile picture removed successfully!";
         } else {
-            $_SESSION["profile_pic_error"] = "No profile picture to delete.";
+            $_SESSION["profile_pic_error"] = "Error removing profile picture!";
+        }
+        
+    } elseif (isset($_FILES["profile_picture"])) {
+        // Handle file upload (existing code)
+        $target_dir = "../admin/uploads/";
+        $target_file = $target_dir . basename($_FILES["profile_picture"]["name"]);
+        $uploadOk = 1;
+        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+        
+        // Check if image file is a actual image or fake image
+        $check = getimagesize($_FILES["profile_picture"]["tmp_name"]);
+        if ($check !== false) {
+            $uploadOk = 1;
+        } else {
+            $_SESSION["profile_pic_error"] = "File is not an image.";
+            $uploadOk = 0;
+        }
+        
+        // Check file size (5MB max)
+        if ($_FILES["profile_picture"]["size"] > 5000000) {
+            $_SESSION["profile_pic_error"] = "Sorry, your file is too large (max 5MB).";
+            $uploadOk = 0;
+        }
+        
+        // Allow certain file formats
+        if ($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg" && $imageFileType != "gif") {
+            $_SESSION["profile_pic_error"] = "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
+            $uploadOk = 0;
+        }
+        
+        // Check if $uploadOk is set to 0 by an error
+        if ($uploadOk == 0) {
+            $_SESSION["profile_pic_error"] = $_SESSION["profile_pic_error"] ?? "Sorry, your file was not uploaded.";
+        } else {
+            // Generate unique filename
+            $new_filename = "doc_" . $userid . "_" . time() . "." . $imageFileType;
+            $target_file = $target_dir . $new_filename;
+            
+            if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $target_file)) {
+                // Update database with new filename
+                $update_sql = "UPDATE doctor SET photo='$new_filename' WHERE docid='$userid'";
+                if ($database->query($update_sql)) {
+                    $_SESSION["profile_pic_success"] = "Profile picture updated successfully!";
+                    
+                    // Delete old photo if it's not the default one
+                    $old_photo = $userfetch["photo"];
+                    if ($old_photo != "dentist.png" && file_exists($target_dir . $old_photo)) {
+                        unlink($target_dir . $old_photo);
+                    }
+                } else {
+                    $_SESSION["profile_pic_error"] = "Error updating database record.";
+                }
+            } else {
+                $_SESSION["profile_pic_error"] = "Sorry, there was an error uploading your file.";
+            }
         }
     }
-
-    // Redirect back to settings.php
-    header("Location: settings.php");
-    exit();
-} else {
-    // Invalid request method
-    $_SESSION["profile_pic_error"] = "Invalid request.";
-    header("Location: settings.php");
-    exit();
 }
+
+header("Location: settings.php");
+exit();
 ?>

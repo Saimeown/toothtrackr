@@ -376,6 +376,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
             display: none;
         }
         
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .done-btn {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .done-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        .done-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .remove-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .remove-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .remove-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .cancel-btn {
+            background-color: #f5f5f5;
+            color: #555;
+            border: 1px solid #ddd;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #e0e0e0;
+        }
     </style>
 </head>
 
@@ -706,30 +758,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
         $action = $_GET["action"];
         
         if ($action == 'deactivate_account') {
-            $sqlmain = "select * from doctor where docid='$id'";
-            $result = $database->query($sqlmain);
-            $row = $result->fetch_assoc();
-            $name = $row["docname"];
-            
-            echo '
-            <div id="popup1" class="overlay">
-                <div class="popup">
-                    <div class="popup-header">
-                        <h2 class="popup-title">Deactivate Account</h2>
-                        <a class="close" href="settings.php">×</a>
+    $sqlmain = "select * from doctor where docid='$id'";
+    $result = $database->query($sqlmain);
+    $row = $result->fetch_assoc();
+    $name = $row["docname"];
+    
+    echo '
+    <div id="popup1" class="overlay">
+        <div class="popup">
+            <div class="popup-header">
+                <h2 class="popup-title">Deactivate Account</h2>
+                <a class="close" href="settings.php">×</a>
+            </div>
+            <div class="popup-content">
+                <p>Are you sure you want to deactivate your account?</p>
+                <p>This will mark your account as inactive and you won\'t be able to log in.</p>
+                <p><strong>Note:</strong> This action is reversible by contacting the administrator.</p>
+                
+                <form action="delete-account.php" method="POST" style="margin-top:20px;">
+                    <input type="hidden" name="docid" value="'.$id.'">
+                    <div class="action-buttons-right">
+                        <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
+                        <button type="submit" class="action-btn remove-btn" name="deactivate">Deactivate</button>
                     </div>
-                    <div class="popup-content">
-                        <p>Are you sure you want to deactivate your account?</p>
-                        <p>This will remove <strong>' . substr($name, 0, 40) . '</strong> from the system.</p>
-                        
-                        <div class="action-buttons-right">
-                            <a href="settings.php" class="action-btn cancel-btn">Cancel</a>
-                            <a href="delete-account.php?id=' . $id . '" class="action-btn remove-btn">Deactivate</a>
-                        </div>
-                    </div>
-                </div>
-            </div>';
-        } elseif ($action == 'change_password') {
+                </form>
+            </div>
+        </div>
+    </div>';
+} elseif ($action == 'change_password') {
             echo '
             <div id="popup1" class="overlay">
                 <div class="popup">
@@ -814,9 +870,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
             $result = $database->query($sqlmain);
             $row = $result->fetch_assoc();
             $current_photo = $row["photo"];
-            $photopath = !empty($current_photo) && file_exists("../admin/uploads/" . $current_photo) 
-                ? "../admin/uploads/" . $current_photo 
-                : "../Media/Icon/Blue/profile.png";
+            $has_photo = !empty($current_photo) && file_exists("../admin/uploads/" . $current_photo);
+            $photopath = $has_photo ? "../admin/uploads/" . $current_photo : "../Media/Icon/Blue/profile.png";
 
             echo '
             <div id="popup1" class="overlay">
@@ -828,6 +883,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                     <div class="popup-content">
                         <form action="update-profile-pic.php" method="POST" class="popup-form" enctype="multipart/form-data">
                             <input type="hidden" name="upload_photo" value="1">
+                            <input type="hidden" name="docid" value="' . $id . '">
                             
                             <div class="form-section">
                                 <div class="label-td">
@@ -847,9 +903,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                             </div>
                             
                             <div class="action-buttons">
-                                <button type="submit" class="action-btn done-btn">Upload</button>
-                                <button type="submit" name="delete_photo" value="1" class="action-btn remove-btn" 
-                                    onclick="return confirm(\'Are you sure you want to remove your profile picture?\')">Remove</button>
+                                <button type="submit" class="action-btn done-btn" id="change-btn" disabled>Change</button>
+                                <button type="submit" name="delete_photo" value="1" class="action-btn remove-btn" id="remove-btn" ' . ($has_photo ? '' : 'disabled') . '>Remove</button>
                             </div>
                         </form>
                     </div>
@@ -886,11 +941,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                 });
             }
 
-            // File input preview
+            // File input preview and button state management
             const fileInput = document.getElementById('profile_picture');
             const filePreview = document.getElementById('file-preview');
+            const changeBtn = document.getElementById('change-btn');
+            const removeBtn = document.getElementById('remove-btn');
             
-            if (fileInput && filePreview) {
+            if (fileInput && filePreview && changeBtn && removeBtn) {
                 fileInput.addEventListener('change', function() {
                     const file = this.files[0];
                     if (file) {
@@ -898,10 +955,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_profile"])) {
                         reader.onload = function(e) {
                             filePreview.src = e.target.result;
                             filePreview.style.display = 'block';
+                            changeBtn.disabled = false;
                         };
                         reader.readAsDataURL(file);
                     } else {
                         filePreview.style.display = 'none';
+                        changeBtn.disabled = true;
                     }
                 });
             }

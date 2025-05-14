@@ -76,7 +76,7 @@
             // Verify user type
             if ($user['usertype'] == 'd') {
                 // Check credentials in the doctor table
-                $checker = $database->query("SELECT * FROM doctor WHERE docemail='$email'");
+                $checker = $database->query("SELECT * FROM doctor WHERE docemail='$email' AND status='active'");
                 if ($checker->num_rows == 1) {
                     $doctor = $checker->fetch_assoc();
 
