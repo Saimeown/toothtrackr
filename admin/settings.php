@@ -1,7 +1,5 @@
 <?php 
-
 session_start();
-
 ?>
 
 <!DOCTYPE html>
@@ -162,6 +160,54 @@ session_start();
         .success-popup h2 {
             color: #4CAF50;
         }
+        
+        /* Tab styles */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background-color: #e1e1e1;
+        }
+        
+        .tab.active {
+            background-color: #2a5885;
+            color: white;
+            border-color: #2a5885;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .add-btn-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 
@@ -279,178 +325,188 @@ session_start();
                     <!-- header -->
                     <div class="announcements-header">
                         <h3 class="announcements-title">Settings</h3>
-                        <div class="announcement-filters">
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="tabs">
+                        <div class="tab active" onclick="openTab('procedures-tab')">Procedures</div>
+                        <div class="tab" onclick="openTab('services-tab')">Services</div>
+                        <div class="tab" onclick="openTab('clinic-tab')">Clinic Information</div>
+                    </div>
+
+                    <!-- Procedures Tab -->
+                    <div id="procedures-tab" class="tab-content active">
+                        <div class="add-btn-container">
+                            <a href="?action=add_procedure&id=none&error=0" class="non-style-link">
+                                <button class="filter-btn add-btn">
+                                    Add New Procedure
+                                </button>
+                            </a>
+                        </div>
+                        
+                        <div class="table-container">
+                            <p class="heading-main12" style="margin-left: 15px;font-size:18px;color:rgb(49, 49, 49)">All Procedures (<?php 
+                            $sqlcount = "SELECT COUNT(*) FROM procedures";
+                            $result = $database->query($sqlcount);
+                            $row = $result->fetch_row();
+                            echo $row[0]; 
+                            ?>)</p>
+                            
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Procedure Name</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    if ($_POST) {
+                                        $keyword = $_POST["search"];
+                                        $sqlmain = "SELECT * FROM procedures WHERE procedure_name='$keyword' OR procedure_name LIKE '$keyword%' OR procedure_name LIKE '%$keyword' OR procedure_name LIKE '%$keyword%'";
+                                    } else {
+                                        $sqlmain = "SELECT * FROM procedures ORDER BY procedure_id ASC";
+                                    }
+                                    
+                                    $result = $database->query($sqlmain);
+                                    if ($result->num_rows == 0) {
+                                        echo '<tr><td colspan="4"><center>No procedures found</center></td></tr>';
+                                    } else {
+                                        while ($row = $result->fetch_assoc()) {
+                                            $id = $row["procedure_id"];
+                                            $name = $row["procedure_name"];
+                                            $desc = $row["description"];
+                                            
+                                            echo '<tr>
+                                                <td>'.$id.'</td>
+                                                <td><div class="cell-text">'.substr($name, 0, 30).'</div></td>
+                                                <td><div class="cell-text">'.substr($desc, 0, 50).'...</div></td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <a href="?action=edit_procedure&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
+                                                        <a href="?action=drop_procedure&id='.$id.'&name='.$name.'" class="action-btn remove-btn">Remove</a>
+                                                    </div>
+                                                </td>
+                                            </tr>';
+                                        }
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Services Tab -->
+                    <div id="services-tab" class="tab-content">
+                        <div class="add-btn-container">
                             <a href="?action=add&id=none&error=0" class="non-style-link">
-                                <button class="filter-btn add-btn"
-                                    style="display: flex;justify-content: center;align-items: center;margin-left:75px; width: 200px;">
+                                <button class="filter-btn add-btn">
                                     Add New Service
                                 </button>
                             </a>
                         </div>
-                    </div>
-
-                    <!-- Procedures Section -->
-                    <!-- Procedures Section -->
-<div class="table-container">
-    <div class="announcements-header">
-        <p class="heading-main12" style="margin-left: 15px;font-size:18px;color:rgb(49, 49, 49)">All Procedures (<?php 
-        $sqlcount = "SELECT COUNT(*) FROM procedures";
-        $result = $database->query($sqlcount);
-        $row = $result->fetch_row();
-        echo $row[0]; 
-        ?>)</p>
-        <div class="announcement-filters">
-            <a href="?action=add_procedure&id=none&error=0" class="non-style-link">
-                <button class="filter-btn add-btn"
-                    style="display: flex;justify-content: center;align-items: center;margin-left:75px; width: 200px;">
-                    Add New Procedure
-                </button>
-            </a>
-        </div>
-    </div>
-    
-    <table class="table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Procedure Name</th>
-                <th>Description</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            if ($_POST) {
-                $keyword = $_POST["search"];
-                $sqlmain = "SELECT * FROM procedures WHERE procedure_name='$keyword' OR procedure_name LIKE '$keyword%' OR procedure_name LIKE '%$keyword' OR procedure_name LIKE '%$keyword%'";
-            } else {
-                $sqlmain = "SELECT * FROM procedures ORDER BY procedure_id ASC";
-            }
-            
-            $result = $database->query($sqlmain);
-            if ($result->num_rows == 0) {
-                echo '<tr><td colspan="4"><center>No procedures found</center></td></tr>';
-            } else {
-                while ($row = $result->fetch_assoc()) {
-                    $id = $row["procedure_id"];
-                    $name = $row["procedure_name"];
-                    $desc = $row["description"];
-                    
-                    echo '<tr>
-                        <td>'.$id.'</td>
-                        <td><div class="cell-text">'.substr($name, 0, 30).'</div></td>
-                        <td><div class="cell-text">'.substr($desc, 0, 50).'...</div></td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="?action=edit_procedure&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
-                                <a href="?action=drop_procedure&id='.$id.'&name='.$name.'" class="action-btn remove-btn">Remove</a>
-                            </div>
-                        </td>
-                    </tr>';
-                }
-            }
-            ?>
-        </tbody>
-    </table>
-</div>
-
-                    <!-- Services Section -->
-                    <div class="table-container" style="margin-top: 30px;">
-                        <p class="heading-main12" style="margin-left: 15px;font-size:18px;color:rgb(49, 49, 49)">All Services (<?php 
-                        $sqlcount = "SELECT COUNT(*) FROM services";
-                        $result = $database->query($sqlcount);
-                        $row = $result->fetch_row();
-                        echo $row[0]; 
-                        ?>)</p>
                         
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Image</th>
-                                    <th>Service Name</th>
-                                    <th>Description</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                if ($_POST) {
-                                    $keyword = $_POST["search"];
-                                    $sqlmain = "SELECT * FROM services WHERE procedure_name='$keyword' OR procedure_name LIKE '$keyword%' OR procedure_name LIKE '%$keyword' OR procedure_name LIKE '%$keyword%'";
-                                } else {
-                                    $sqlmain = "SELECT * FROM services";
-                                }
-                                
-                                $result = $database->query($sqlmain);
-                                if ($result->num_rows == 0) {
-                                    echo '<tr><td colspan="4"><center>No services found</center></td></tr>';
-                                } else {
-                                    while ($row = $result->fetch_assoc()) {
-                                        $id = $row["id"];
-                                        $name = $row["procedure_name"];
-                                        $desc = $row["description"];
-                                        $image = $row["image_path"];
-                                        
-                                        echo '<tr>
-                                            <td>
-                                                <img src="../'.$image.'" alt="Service Image" class="profile-img-small">
-                                            </td>
-                                            <td><div class="cell-text">'.substr($name, 0, 30).'</div></td>
-                                            <td><div class="cell-text">'.substr($desc, 0, 50).'...</div></td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <a href="?action=edit&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
-                                                    <a href="?action=drop&id='.$id.'&name='.$name.'" class="action-btn remove-btn">Remove</a>
-                                                </div>
-                                            </td>
-                                        </tr>';
+                        <div class="table-container">
+                            <p class="heading-main12" style="margin-left: 15px;font-size:18px;color:rgb(49, 49, 49)">All Services (<?php 
+                            $sqlcount = "SELECT COUNT(*) FROM services";
+                            $result = $database->query($sqlcount);
+                            $row = $result->fetch_row();
+                            echo $row[0]; 
+                            ?>)</p>
+                            
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Image</th>
+                                        <th>Service Name</th>
+                                        <th>Description</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    if ($_POST) {
+                                        $keyword = $_POST["search"];
+                                        $sqlmain = "SELECT * FROM services WHERE procedure_name='$keyword' OR procedure_name LIKE '$keyword%' OR procedure_name LIKE '%$keyword' OR procedure_name LIKE '%$keyword%'";
+                                    } else {
+                                        $sqlmain = "SELECT * FROM services";
                                     }
-                                }
-                                ?>
-                            </tbody>
-                        </table>
+                                    
+                                    $result = $database->query($sqlmain);
+                                    if ($result->num_rows == 0) {
+                                        echo '<tr><td colspan="4"><center>No services found</center></td></tr>';
+                                    } else {
+                                        while ($row = $result->fetch_assoc()) {
+                                            $id = $row["id"];
+                                            $name = $row["procedure_name"];
+                                            $desc = $row["description"];
+                                            $image = $row["image_path"];
+                                            
+                                            echo '<tr>
+                                                <td>
+                                                    <img src="../'.$image.'" alt="Service Image" class="profile-img-small">
+                                                </td>
+                                                <td><div class="cell-text">'.substr($name, 0, 30).'</div></td>
+                                                <td><div class="cell-text">'.substr($desc, 0, 50).'...</div></td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <a href="?action=edit&id='.$id.'&error=0" class="action-btn edit-btn">Edit</a>
+                                                        <a href="?action=drop&id='.$id.'&name='.$name.'" class="action-btn remove-btn">Remove</a>
+                                                    </div>
+                                                </td>
+                                            </tr>';
+                                        }
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <!-- Clinic Information Section -->
-                    <div class="table-container" style="margin-top: 30px;">
-                        <p class="heading-main12" style="margin-left: 15px;font-size:20px;color:rgb(49, 49, 49)">Clinic Information</p>
-                        
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Current Value</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_assoc();
-                                
-                                $fields = [
-                                    'clinic_name' => 'Clinic Name',
-                                    'clinic_description' => 'Clinic Description',
-                                    'address' => 'Address',
-                                    'phone' => 'Phone Number',
-                                    'email' => 'Email Address',
-                                    'facebook_url' => 'Facebook Link',
-                                    'instagram_url' => 'Instagram Link'
-                                ];
-                                
-                                foreach ($fields as $field => $label) {
-                                    echo '<tr>
-                                            <td><div class="cell-text">'.$label.'</div></td>
-                                            <td><div class="cell-text">'.substr($clinic_info[$field], 0, 50).(strlen($clinic_info[$field]) > 50 ? '...' : '').'</div></td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <a href="?action=edit_clinic&field='.$field.'" class="action-btn edit-btn">Edit</a>
-                                                </div>
-                                            </td>
-                                        </tr>';
-                                }
-                                ?>
-                            </tbody>
-                        </table>
+                    <!-- Clinic Information Tab -->
+                    <div id="clinic-tab" class="tab-content">
+                        <div class="table-container">
+                            <p class="heading-main12" style="margin-left: 15px;font-size:20px;color:rgb(49, 49, 49)">Clinic Information</p>
+                            
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Current Value</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_assoc();
+                                    
+                                    $fields = [
+                                        'clinic_name' => 'Clinic Name',
+                                        'clinic_description' => 'Clinic Description',
+                                        'address' => 'Address',
+                                        'phone' => 'Phone Number',
+                                        'email' => 'Email Address',
+                                        'facebook_url' => 'Facebook Link',
+                                        'instagram_url' => 'Instagram Link'
+                                    ];
+                                    
+                                    foreach ($fields as $field => $label) {
+                                        echo '<tr>
+                                                <td><div class="cell-text">'.$label.'</div></td>
+                                                <td><div class="cell-text">'.substr($clinic_info[$field], 0, 50).(strlen($clinic_info[$field]) > 50 ? '...' : '').'</div></td>
+                                                <td>
+                                                    <div class="action-buttons">
+                                                        <a href="?action=edit_clinic&field='.$field.'" class="action-btn edit-btn">Edit</a>
+                                                    </div>
+                                                </td>
+                                            </tr>';
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -807,9 +863,9 @@ session_start();
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td colspan="2">
-                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                        <input type="submit" value="Save Changes" class="login-btn btn-primary btn">
+                                    <td colspan="2" style="display:flex;">
+                                        <input type="reset" value="Reset" class="new-action-btn">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                        <input type="submit" value="Save Changes" class="new-action-btn" style="width: 300px;">
                                     </td>
                                 </tr>
                                 </form>
@@ -913,9 +969,9 @@ session_start();
                                         <label for="description">Description:</label>
                                         <textarea name="description" class="input-text" placeholder="Procedure Description" rows="4" required></textarea>
                                     </div>
-                                    <div class="form-actions">
-                                        <input type="reset" value="Reset" class="login-btn btn-primary-soft btn">
-                                        <input type="submit" value="Add Procedure" class="login-btn btn-primary btn">
+                                    <div class="form-actions" style="display:flex;">
+                                        <input type="reset" value="Reset" class="new-action-btn">
+                                        <input type="submit" value="Add Procedure" class="new-action-btn" style="width: 140px;">
                                     </div>
                                 </form>
                             </div>
@@ -1034,21 +1090,80 @@ session_start();
             window.location.href = 'settings.php';
         }
 
-        // Search input event listener
-        document.addEventListener('DOMContentLoaded', function () {
+        // Tab functionality
+        function openTab(tabId) {
+            // Hide all tab contents
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            // Remove active class from all tabs
+            const tabs = document.getElementsByClassName('tab');
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            
+            // Show the selected tab content and mark tab as active
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+            
+            // Update URL without reloading
+            const stateObj = { tab: tabId };
+            const title = 'Settings - ' + tabId.replace('-tab', '');
+            const url = 'settings.php?tab=' + tabId.replace('-tab', '');
+            history.pushState(stateObj, title, url);
+        }
+        
+        // Check for tab parameter on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            if (tabParam) {
+                const tabId = tabParam + '-tab';
+                const tabElement = document.getElementById(tabId);
+                
+                if (tabElement) {
+                    // Hide all tabs first
+                    const tabContents = document.getElementsByClassName('tab-content');
+                    for (let i = 0; i < tabContents.length; i++) {
+                        tabContents[i].classList.remove('active');
+                    }
+                    
+                    // Remove active class from all tab buttons
+                    const tabs = document.getElementsByClassName('tab');
+                    for (let i = 0; i < tabs.length; i++) {
+                        tabs[i].classList.remove('active');
+                    }
+                    
+                    // Activate the requested tab
+                    tabElement.classList.add('active');
+                    
+                    // Find and activate the corresponding tab button
+                    const tabButtons = document.getElementsByClassName('tab');
+                    for (let i = 0; i < tabButtons.length; i++) {
+                        if (tabButtons[i].getAttribute('onclick').includes(tabId)) {
+                            tabButtons[i].classList.add('active');
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Search input event listener
             const searchInput = document.getElementById('searchInput');
             const clearBtn = document.querySelector('.clear-btn');
 
             if (clearBtn) {
-                clearBtn.addEventListener('click', function () {
+                clearBtn.addEventListener('click', function() {
                     clearSearch();
                 });
             }
         });
-    </script>
-    <script>
+
+        // Show popup if URL has any action parameter
         document.addEventListener('DOMContentLoaded', function () {
-            // Show popup if URL has any action parameter
             const urlParams = new URLSearchParams(window.location.search);
             const action = urlParams.get('action');
 

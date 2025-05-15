@@ -556,69 +556,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
                         </div>
                     </div>
 
-                    <!-- Inactive Patients Table -->
-                    <div class="table-section inactive-table">
-                        <h3 class="table-title">Inactive Patients (<?php echo $inactive_count; ?>)</h3>
-                        <div class="table-container">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Profile</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Contact</th>
-                                        <th>Date of Birth</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    if ($result_inactive->num_rows == 0) {
-                                        echo '<tr>
-                                            <td colspan="7">
-                                            <br><br><br><br>
-                                            <center>
-                                            <img src="../img/notfound.svg" width="25%">
-                                           
-                                            <br>
-                                            <p class="heading-main12" style="margin-left: 45px;font-size:20px;color:rgb(49, 49, 49)">No inactive patients found!</p>
-                                            </center>
-                                            <br><br><br><br>
-                                            </td>
-                                            </tr>';
-                                    } else {
-                                        while ($row = $result_inactive->fetch_assoc()) {
-                                            $pid = $row["pid"];
-                                            $name = $row["pname"];
-                                            $email = $row["pemail"];
-                                            $dob = $row["pdob"];
-                                            $tel = $row["ptel"];
-                                            $status = $row["status"];
-                                            $profile_pic = !empty($row["profile_pic"]) ? "../" . $row["profile_pic"] : "../Media/Icon/Blue/profile.png";
-
-                                            echo '<tr>
-                                                <td>
-                                                    <img src="' . $profile_pic . '" alt="' . $name . '" class="profile-img-small">
-                                                </td>
-                                                <td><div class="cell-text">' . $name . '</div></td>
-                                                <td><div class="cell-text">' . $email . '</div></td>
-                                                <td><div class="cell-text">' . $tel . '</div></td>
-                                                <td><div class="cell-text">' . $dob . '</div></td>
-                                                <td><span class="status-badge status-inactive">Inactive</span></td>
-                                                <td>
-                                                    <div class="action-buttons">
-                                                        <a href="?action=view&id=' . $pid . '" class="action-btn view-btn">View</a>
-                                                    </div>
-                                                </td>
-                                            </tr>';
-                                        }
-                                    }
-                                    ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                   
 
                     <!-- Pagination -->
                     <div class="pagination">
