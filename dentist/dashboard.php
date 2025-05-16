@@ -59,7 +59,7 @@
         justify-content: center;
         margin-right: 10px;
         background-color: white;
-        border: solid 4px rgb(142, 193, 255);
+        border: solid 3px rgb(142, 193, 255);
     }
 </style>
 <?php
