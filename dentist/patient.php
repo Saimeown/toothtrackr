@@ -557,7 +557,6 @@ if (isset($_GET['action']) && $_GET['action'] == 'view' && isset($_GET['id'])) {
                     </div>
 
                    
-
                     <!-- Pagination -->
                     <div class="pagination">
                         <?php
