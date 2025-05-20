@@ -142,6 +142,17 @@ $currentDay = date('j');
         .select2-dropdown {
             border: 1px solid #ced4da;
         }
+
+        .no-service{
+            background-color:rgb(80, 87, 185); 
+            width: 270px; 
+            border: none;
+            transition: background-color 0.5s ease;
+        }
+        .no-service:hover{
+            cursor: pointer;
+            background-color: rgb(118, 123, 206);
+        }
     </style>
 </head>
 
@@ -159,7 +170,7 @@ $currentDay = date('j');
                 </div>
                 <h3 class="profile-name">Songco Dental and Medical Clinic</h3>
                 <p style="color: #777; margin: 0; font-size: 14px; text-align: center;">
-                    Administrator
+                Secretary
                 </p>
             </div>
 
@@ -479,7 +490,7 @@ $currentDay = date('j');
                                     <div class="color-circle" style="background-color: #BBBBBB;"></div>
                                     <div class="color-label">Completed</div>
                                 </div>
-                                <button class="legend-item" id="addNonWorkingDay" style="background-color:rgb(80, 87, 185); width: 200px; border: none;">Add No Service Day</button>
+                                <button class="legend-item no-service" id="addNonWorkingDay">Add No Service Day</button>
 
                             </div>
                         </div>

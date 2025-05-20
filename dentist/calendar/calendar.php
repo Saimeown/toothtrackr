@@ -84,6 +84,9 @@
             cursor: pointer;
             border-radius: 5px;
         }
+        #calendar{
+            height: 83.9%;
+        }
     </style>
 </head>
 

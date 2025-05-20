@@ -139,7 +139,7 @@ $sortOrder = isset($_GET['sort']) && $_GET['sort'] === 'oldest' ? 'ASC' : 'DESC'
                 </div>
                 <h3 class="profile-name">Songco Dental and Medical Clinic</h3>
                 <p style="color: #777; margin: 0; font-size: 14px; text-align: center;">
-                    Administrator
+                    Secretary
                 </p>
             </div>
 

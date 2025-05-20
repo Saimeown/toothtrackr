@@ -1,6 +1,60 @@
+<?php
+session_start();
+
+// Prevent caching
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Redirect to dashboard if already logged in
+if (isset($_SESSION["user"]) && $_SESSION["usertype"] === 'd') {
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Set timezone
+date_default_timezone_set('Asia/Kolkata');
+$_SESSION["date"] = date('Y-m-d');
+
+// Include DB connection
+include("../connection.php");
+
+// Handle login logic
+$error = "";
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = $database->real_escape_string($_POST['useremail']);
+    $password = $_POST['userpassword'];
+
+    $result = $database->query("SELECT * FROM webuser WHERE email='$email'");
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+
+        if ($user['usertype'] === 'd') {
+            $checker = $database->query("SELECT * FROM doctor WHERE docemail='$email' AND status='active'");
+            if ($checker->num_rows === 1) {
+                $doctor = $checker->fetch_assoc();
+
+                if (password_verify($password, $doctor['docpassword'])) {
+                    $_SESSION['user'] = $email;
+                    $_SESSION['usertype'] = 'd';
+                    $_SESSION['userid'] = $doctor['docid'];
+                    header("Location: dashboard.php");
+                    exit();
+                }
+            }
+            $error = "Invalid credentials. Please try again.";
+        } else {
+            $error = "Access denied. Dentists only.";
+        }
+    } else {
+        $error = "No account found for this email.";
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -16,154 +70,67 @@
     <link rel="stylesheet" href="../css/loading.css">
     <title>Log in - ToothTrackr (Dentist)</title>
     <script>
-        // Prevent going back to dashboard after logout
         function preventBackAfterLogout() {
             window.history.forward();
         }
-        
-        // Execute when page loads
-        window.onload = function() {
-            preventBackAfterLogout();
-        }
-        
-        // Execute when back/forward buttons are pressed
-        window.onpageshow = function(event) {
-            if (event.persisted) {
-                // Page was loaded from cache (back button)
-                window.location.reload();
-            }
+        window.onload = preventBackAfterLogout;
+        window.onpageshow = function (event) {
+            if (event.persisted) window.location.reload();
         };
+        function showSidebar() {
+            document.querySelector('.sidebar').style.display = 'flex';
+        }
+        function hideSidebar() {
+            document.querySelector('.sidebar').style.display = 'none';
+        }
     </script>
 </head>
-
 <body>
-    <?php
-    // Start the session
-    session_start();
-
-    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-    header("Cache-Control: post-check=0, pre-check=0", false);
-    header("Pragma: no-cache");
-    header("Expires: 0");
-
-    // Redirect if already logged in
-    if (isset($_SESSION["user"]) && $_SESSION["usertype"] == 'd') {
-        header("Location: dashboard.php");
-        exit();
-    }
-
-    // Set timezone
-    date_default_timezone_set('Asia/Kolkata');
-    $date = date('Y-m-d');
-    $_SESSION["date"] = $date;
-
-    // Include database connection
-    include("../connection.php");
-
-    // Initialize error message
-    $error = "";
-
-    // Check if form is submitted
-    if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-        $email = $database->real_escape_string($_POST['useremail']);
-        $password = $_POST['userpassword'];
-
-        // Check if the user exists
-        $result = $database->query("SELECT * FROM webuser WHERE email='$email'");
-        if ($result->num_rows == 1) {
-            $user = $result->fetch_assoc();
-
-            // Verify user type
-            if ($user['usertype'] == 'd') {
-                // Check credentials in the doctor table
-                $checker = $database->query("SELECT * FROM doctor WHERE docemail='$email' AND status='active'");
-                if ($checker->num_rows == 1) {
-                    $doctor = $checker->fetch_assoc();
-
-                    // Verify the hashed password
-                    if (password_verify($password, $doctor['docpassword'])) {
-                        // Set session variables
-                        $_SESSION['user'] = $email;
-                        $_SESSION['usertype'] = 'd';
-                        $_SESSION['userid'] = $doctor['docid']; // Store docid for future use
-
-                        // Redirect to dashboard
-                        header("Location: dashboard.php");
-                        exit();
-                    } else {
-                        $error = "Invalid credentials. Please try again.";
-                    }
-                } else {
-                    $error = "Invalid credentials. Please try again.";
-                }
-            } else {
-                $error = "Access denied. Dentists only.";
-            }
-        } else {
-            $error = "No account found for this email.";
-        }
-
-    }
-    ?>
-
     <nav>
         <ul class="sidebar">
-            <li onclick=hideSidebar()><a href="#"><img src="../Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
+            <li onclick="hideSidebar()"><a href="#"><img src="../Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
             <li><a href="../ToothTrackr.php"><img src="../Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
             <li><a href="../ToothTrackr.php">Home</a></li>
-            <!--<li><a href="#">About</a></li>-->
             <li><a href="../ToothTrackr.php#services">Services</a></li>
             <li><a href="../ToothTrackr.php#contact">Contact</a></li>
             <li><a href="signup.php">Sign up</a></li>
             <li><a href="login.php">Login</a></li>
         </ul>
         <ul>
-            <li><a href="../ToothTrackr.php"><img src="../Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a>
-            </li>
+            <li><a href="../ToothTrackr.php"><img src="../Media/Icon/ToothTrackr/name-blue.png" class="logo-name" alt="ToothTrackr"></a></li>
             <li class="hideOnMobile"><a href="../ToothTrackr.php">Home</a></li>
-            <!--<li class="hideOnMobile"><a href="#">About</a></li> -->
             <li class="hideOnMobile"><a href="../ToothTrackr.php#services">Services</a></li>
             <li class="hideOnMobile"><a href="../ToothTrackr.php#contact">Contact</a></li>
             <li class="hideOnMobile"><a href="signup.php" class="reg-btn">Sign up</a></li>
             <li class="hideOnMobile"><a href="login.php" class="log-btn">Login</a></li>
-            <li class="menu-button" onclick=showSidebar()><a href="#"><img src="../Media/Icon/Black/navbar.png"
-                        class="navbar-logo" alt="Navigation Bar"></a></li>
+            <li class="menu-button" onclick="showSidebar()"><a href="#"><img src="../Media/Icon/Black/navbar.png" class="navbar-logo" alt="Navigation Bar"></a></li>
         </ul>
     </nav>
-    <script>
-            function showSidebar() {
-                const sidebar = document.querySelector('.sidebar')
-                sidebar.style.display = 'flex'
-            }
-            function hideSidebar() {
-                const sidebar = document.querySelector('.sidebar')
-                sidebar.style.display = 'none'
-            }
-        </script>
+
     <div class="login-container">
         <div class="inside-container">
-            <span class="login-logo"><img src="../Media/Icon/Blue/dentist.png"></span>
+            <span class="login-logo"><img src="../Media/Icon/Blue/dentist.png" alt="Dentist Icon"></span>
             <span class="login-header">Log in</span>
             <span class="login-header-admin">Songco Dental and Medical Clinic</span>
-            <form action="" method="POST">
-                <label for="email">Email</label>
+            <form method="POST">
+                <label for="useremail">Email</label>
                 <input type="email" id="useremail" name="useremail" placeholder="Enter your email" required>
-                <label for="password">Password</label>
+
+                <label for="userpassword">Password</label>
                 <input type="password" id="userpassword" name="userpassword" placeholder="Enter your password" required>
-                <div class="error-message" style="<?php echo empty($error) ? 'display:none;' : ''; ?>">
-                    <?php
-                    if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($error)) {
-                        echo '<p style="error-message">' . htmlspecialchars($error) . '</p>';
-                    }
-                    ?>
-                </div>
+
+                <?php if (!empty($error)): ?>
+                    <div class="error-message">
+                        <p><?php echo htmlspecialchars($error); ?></p>
+                    </div>
+                <?php endif; ?>
+
                 <input type="submit" value="Log in" class="login-btn">
-                <label for="" class="bottom-text">Log in as <a href="../admin/login.php"
-                    class="signup-link">Songco Dental and Medical Clinic</a></label>
-                    <label for="" class="bottom-text" style="margin-top: 10px;"><a href="forgot-password.php" class="signup-link">Forgot password?</a></label>
+
+                <label class="bottom-text">Log in as <a href="../admin/login.php" class="signup-link">Songco Dental and Medical Clinic</a></label>
+                <label class="bottom-text"><a href="forgot-password.php" class="signup-link">Forgot password?</a></label>
             </form>
         </div>
     </div>
 </body>
-
 </html>

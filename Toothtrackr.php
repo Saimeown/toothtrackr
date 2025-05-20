@@ -287,8 +287,7 @@ $clinic_info = $database->query("SELECT * FROM clinic_info WHERE id=1")->fetch_a
                     </ul>
                 </div>
                 <div class="footer-column">
-                    <a href="dentist/login.php" class="admin-btn">Login as Dentist</a>
-                    <a href="admin/login.php" class="admin-btn">Login as Admin</a>
+                    
                 </div>
             </div>
             <!-- Add this HTML code to the footer section before the closing </footer> tag -->

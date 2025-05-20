@@ -37,6 +37,11 @@
             text-align: center;
             padding: 20px;
         }
+
+        #calendar{
+            height: 82.2%;
+        }
+
     </style>
 </head>
 

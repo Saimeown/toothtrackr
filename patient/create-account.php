@@ -26,6 +26,25 @@
         .container {
             animation: transitionIn-X 0.5s;
         }
+        .terms-container {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .terms-text {
+            color: #2f396d;
+            font-size: 14px;
+        }
+
+        .terms-link {
+            color: #2f396d;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+        .terms-link:hover {
+            color: #1a237e;
+        }
     </style>
 
 
@@ -671,13 +690,16 @@
 
                     <tr>
                         <td class="label-td" colspan="2">
+                            
                             <div class="certify-container">
                                 <input type="checkbox" name="certify" id="certify" class="small-checkbox" required>
                                 <label class="certify" for="certify">
                                     I hereby certify that, to the best of my knowledge, the provided information is true
-                                    and
-                                    accurate.
+                                    and accurate.
                                 </label>
+                            </div>
+                            <div class="terms-container">
+                                <p class="terms-text">By creating an account, you agree to our <a href="terms-and-conditions.php" class="terms-link">Terms and Conditions</a>.</p>
                             </div>
                         </td>
                     </tr>
