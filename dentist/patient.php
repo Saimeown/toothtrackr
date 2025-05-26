@@ -21,12 +21,10 @@ $userfetch = $userrow->fetch_assoc();
 $userid = $userfetch["docid"];
 $username = $userfetch["docname"];
 
-// Get counts for sidebar
 $patientrow = $database->query("SELECT COUNT(DISTINCT pid) FROM appointment WHERE docid='$userid'");
 $appointmentrow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='booking' AND docid='$userid'");
 $schedulerow = $database->query("SELECT COUNT(*) FROM appointment WHERE status='appointment' AND docid='$userid'");
 
-// Calendar variables
 $today = date('Y-m-d');
 $currentMonth = date('F');
 $currentYear = date('Y');
