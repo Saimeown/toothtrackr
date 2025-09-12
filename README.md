@@ -1,39 +1,39 @@
-# ToothTrackr 🦷
+# ToothTrackr 
 
 A comprehensive dental clinic management system designed for **Songco Dental and Medical Clinic** (SDMC), featuring efficient appointment scheduling, patient management, and administrative tools.
 
-## 🌟 Features
+## Features
 
-### 👤 Multi-User System
+### Multi-User System
 - **Admin Dashboard**: Complete clinic management and oversight
 - **Dentist Portal**: Patient records, appointments, and schedule management
 - **Patient Interface**: Appointment booking and personal health tracking
 
-### 📅 Appointment Management
+### Appointment Management
 - Interactive calendar system with FullCalendar integration
 - Real-time appointment scheduling and booking
 - Automated email reminders and notifications
 - Appointment history and tracking
 
-### 🏥 Clinical Features
+### Clinical Features
 - Digital dental records management
 - Patient history and treatment tracking
 - Service and procedure management
 - PDF report generation with TCPDF
 
-### 📧 Communication System
+### Communication System
 - Automated email notifications using PHPMailer
 - Google Calendar integration for appointment sync
 - SMS reminders and alerts
 - Contact form with Gmail integration
 
-### 🎨 Modern UI/UX
+### Modern UI/UX
 - Responsive design with mobile-first approach
 - Interactive animations and smooth transitions
 - Customizable theme with dental clinic branding
 - Intuitive navigation and user experience
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **PHP** - Server-side scripting
@@ -54,7 +54,7 @@ A comprehensive dental clinic management system designed for **Songco Dental and
 - **FullCalendar** - Calendar interface
 - **Google Calendar API** - Calendar synchronization
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 - XAMPP (Apache + MySQL + PHP)
@@ -114,7 +114,7 @@ ToothTrackr/
 └── composer.json       # PHP dependencies
 ```
 
-## 💻 Usage
+## Usage
 
 ### For Administrators
 1. Login to admin portal
@@ -134,7 +134,7 @@ ToothTrackr/
 3. View appointment history
 4. Receive email/SMS reminders
 
-## 🔧 Configuration
+## Configuration
 
 ### Database Configuration
 Update `connection.php` with your database credentials:
@@ -148,7 +148,7 @@ Configure email settings in the `api/` directory for automated notifications.
 ### Google Calendar Integration
 Add your Google Calendar API credentials in the `api/` folder.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -156,18 +156,18 @@ Add your Google Calendar API credentials in the `api/` folder.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📞 Support
+## Support
 
 For technical support or bug reports:
 - **Email**: toothtrackr@gmail.com
 - **Phone**: +63 994 803 5127
 - **GitHub Issues**: [Report a bug](https://github.com/Saimeown/ToothTrackr/issues)
 
-## 📄 License
+## License
 
 This project is developed for Songco Dental and Medical Clinic. All rights reserved.
 
-## 🏆 Acknowledgments
+## Acknowledgments
 
 - **Songco Dental and Medical Clinic** - For project requirements and support
 - **PHP Community** - For excellent documentation and libraries
