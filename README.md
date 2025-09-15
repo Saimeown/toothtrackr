@@ -2,6 +2,9 @@
 
 A comprehensive dental clinic management system designed for **Songco Dental and Medical Clinic** (SDMC), featuring efficient appointment scheduling, patient management, and administrative tools.
 
+![Demo](./Media/toothtrackr.gif)
+
+
 ## Features
 
 ### Multi-User System
